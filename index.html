@@ -687,8 +687,9 @@
         function renderHistoryList() {
             const list = document.getElementById('historyList'); list.innerHTML = '';
             const query = getFeedSearchValue();
-            const benchmarkNotes = benchmarkList.filter(bm => bm.m && [bm.t, bm.n, bm.m].join(' ').toLowerCase().includes(query));
-            const keys = Object.keys(allTickerData).filter(t => !t.startsWith('^') && ((allTickerData[t].events.length > 0) || benchmarkList.some(bm => bm.t === t && bm.m))).filter(t => {
+            const scopedTickers = compareTickers.length ? compareTickers : Object.keys(allTickerData).filter(t => !t.startsWith('^'));
+            const benchmarkNotes = benchmarkList.filter(bm => scopedTickers.includes(bm.t) && bm.m && (!query || [bm.t, bm.n, bm.m].join(' ').toLowerCase().includes(query)));
+            const keys = scopedTickers.filter(t => !t.startsWith('^') && allTickerData[t] && ((allTickerData[t].events.length > 0) || benchmarkList.some(bm => bm.t === t && bm.m))).filter(t => {
                 const info = allTickerData[t];
                 return !query || [t, info.company || '', ...(info.events || []).flatMap(ev => [ev.title || '', ev.desc || ''])].join(' ').toLowerCase().includes(query);
             });
@@ -715,11 +716,12 @@
             list.innerHTML = '';
             if (!query) return;
             const results = [];
-            benchmarkList.forEach(bm => {
+            const scopedTickers = compareTickers.length ? compareTickers : Object.keys(allTickerData).filter(t => !t.startsWith('^'));
+            benchmarkList.filter(bm => scopedTickers.includes(bm.t)).forEach(bm => {
                 const hay = [bm.t, bm.n, bm.m || ''].join(' ').toLowerCase();
                 if (hay.includes(query)) results.push({ type: 'benchmark', title: bm.n, sub: bm.t, desc: bm.m || 'Benchmark', action: () => addBenchmark(bm.t, bm.n) });
             });
-            Object.entries(allTickerData).forEach(([ticker, info]) => {
+            Object.entries(allTickerData).filter(([ticker]) => scopedTickers.includes(ticker)).forEach(([ticker, info]) => {
                 const hay = [ticker, info.company || ''].join(' ').toLowerCase();
                 if (hay.includes(query)) results.push({ type: 'asset', title: info.company || ticker, sub: ticker, desc: `${info.events.length} events saved`, action: () => addToComparison(ticker, info.company) });
                 (info.events || []).forEach(ev => {
