@@ -34,6 +34,10 @@
         .section-header { cursor: pointer; user-select: none; }
         .event-type-option input:checked + label { background: #ffffff; color: #0f172a; box-shadow: 0 1px 3px rgba(15, 23, 42, 0.08); }
         .event-type-option input:focus-visible + label { outline: 2px solid #2563eb; outline-offset: 2px; }
+        .panel-toggle { padding: 10px 14px; border-radius: 999px; background: #ffffff; border: 1px solid #cbd5e1; font-size: 10px; font-weight: 900; text-transform: uppercase; letter-spacing: 0.12em; color: #475569; transition: all 0.2s; }
+        .panel-toggle:hover { background: #eff6ff; color: #2563eb; border-color: #93c5fd; }
+        .search-result-card:hover { border-color: #2563eb; }
+
     </style>
 </head>
 <body class="p-4 lg:p-6 text-slate-900">
@@ -56,26 +60,16 @@
         </div>
     </div>
 
+    <div class="max-w-[2400px] mx-auto mb-4 flex items-center justify-between gap-3">
+        <button id="leftPanelToggle" onclick="toggleSidePanel('left')" class="panel-toggle">Hide Left Panel</button>
+        <div class="text-[10px] font-black uppercase tracking-[0.3em] text-slate-400">Adaptive Workspace</div>
+        <button id="rightPanelToggle" onclick="toggleSidePanel('right')" class="panel-toggle">Hide Right Panel</button>
+    </div>
+
     <div class="max-w-[2400px] mx-auto flex flex-col xl:flex-row gap-6">
         
         <!-- 1. 좌측 컨트롤러 (Dual-Hub) -->
-        <div class="w-full xl:w-[420px] space-y-5 h-fit sticky top-6 transition-all">
-            
-            <div class="bg-white p-6 rounded-[2.5rem] shadow-xl border border-slate-200">
-                <div class="flex items-center justify-between mb-4">
-                    <div class="flex items-center gap-2">
-                        <div class="w-3 h-8 bg-blue-700 rounded-full"></div>
-                        <h2 class="text-2xl font-black italic tracking-tighter uppercase leading-none">OS V39</h2>
-                    </div>
-                    <div class="flex gap-1">
-                        <button onclick="exportBackup()" class="px-3 py-1.5 bg-slate-800 text-white rounded-lg text-[10px] font-black uppercase">Backup</button>
-                        <button onclick="resetWorkspace()" class="px-3 py-1.5 bg-red-500 text-white rounded-lg text-[10px] font-black uppercase hover:bg-red-600">Reset</button>
-                    </div>
-                </div>
-                <label class="block w-full text-center px-4 py-2 bg-slate-100 text-slate-500 rounded-xl text-[10px] font-black cursor-pointer hover:bg-slate-200 uppercase italic">
-                    Import DB <input type="file" class="hidden" onchange="importBackup(event)">
-                </label>
-            </div>
+        <div id="leftPanel" class="w-full xl:w-[420px] space-y-5 h-fit sticky top-6 transition-all">
 
             <!-- Comparison Hub -->
             <div class="bg-white p-6 rounded-[2.5rem] shadow-xl border border-slate-200 overflow-hidden">
@@ -167,7 +161,7 @@
         </div>
 
         <!-- 2. 중앙 캔버스 -->
-        <div class="flex-1 flex justify-center bg-white p-8 rounded-[3.5rem] shadow-inner h-fit border border-slate-200 overflow-auto">
+        <div id="centerPanel" class="min-w-0 flex-1 flex justify-center bg-white p-8 rounded-[3.5rem] shadow-inner h-fit border border-slate-200 overflow-auto transition-all">
             <div id="captureArea" class="report-canvas">
                 <div class="mb-12 border-b-[10px] border-slate-900 pb-8">
                     <div class="flex justify-between items-end">
@@ -189,23 +183,14 @@
         </div>
 
         <!-- 3. 우측 데이터베이스 -->
-        <div class="w-full xl:w-[400px] space-y-6 sticky top-6 h-fit font-bold transition-all">
-            <div class="bg-blue-600 p-6 rounded-[2.5rem] shadow-xl text-white">
-                <div class="section-header flex justify-between items-center mb-4" onclick="toggleSection('set-section')">
-                    <h3 class="text-xs font-black tracking-widest uppercase italic">Snapshots</h3>
-                    <span id="set-section-icon" class="text-[10px] opacity-50">▲</span>
-                </div>
-                <div id="set-section" class="space-y-2 max-h-[250px] overflow-y-auto custom-scroll pr-1"></div>
-                <button onclick="saveCombinedSet()" class="w-full mt-3 bg-white/20 text-white py-2 rounded-xl font-black text-[10px] hover:bg-white/30 uppercase tracking-widest italic transition-all">💾 Snapshot Current Hub</button>
-            </div>
-
+        <div id="rightPanel" class="w-full xl:w-[400px] space-y-6 sticky top-6 h-fit font-bold transition-all">
             <div class="bg-white p-6 rounded-[2.5rem] shadow-xl border border-slate-200">
                 <div class="section-header flex justify-between items-center mb-4" onclick="toggleSection('db-section')">
                     <h3 class="text-xs font-black tracking-widest uppercase italic text-slate-400">Asset Database</h3>
                     <span id="db-section-icon" class="text-[10px] text-slate-200">▲</span>
                 </div>
                 <div id="db-section">
-                    <div id="historyList" class="space-y-2 max-h-[300px] overflow-y-auto custom-scroll pr-1 text-xs"></div>
+                    <div id="historyList" class="space-y-2 max-h-[340px] overflow-y-auto custom-scroll pr-1 text-xs"></div>
                 </div>
             </div>
 
@@ -215,9 +200,32 @@
                     <span id="feed-section-icon" class="text-[10px] text-slate-600">▲</span>
                 </div>
                 <div id="feed-section">
-                    <input id="feedSearch" oninput="renderGlobalEvents()" placeholder="Integrated Search..." class="w-full bg-slate-800 border-none p-3 rounded-xl text-[10px] font-medium outline-none focus:ring-1 ring-blue-500 mb-4">
-                    <div id="globalEventList" class="space-y-3 max-h-[400px] overflow-y-auto custom-scroll pr-1 text-[11px]"></div>
+                    <input id="feedSearch" oninput="renderUnifiedSearch(); renderGlobalEvents(); renderHistoryList()" placeholder="Integrated Search: ticker / asset / event / benchmark memo" class="w-full bg-slate-800 border-none p-3 rounded-xl text-[10px] font-medium outline-none focus:ring-1 ring-blue-500 mb-4">
+                    <div id="searchResultList" class="space-y-2 mb-4"></div>
+                    <div id="globalEventList" class="space-y-3 max-h-[340px] overflow-y-auto custom-scroll pr-1 text-[11px]"></div>
                 </div>
+            </div>
+
+            <div class="bg-blue-600 p-6 rounded-[2.5rem] shadow-xl text-white">
+                <div class="flex items-center justify-between mb-5">
+                    <div class="flex items-center gap-2">
+                        <div class="w-3 h-8 bg-white rounded-full"></div>
+                        <h2 class="text-2xl font-black italic tracking-tighter uppercase leading-none">OS V39</h2>
+                    </div>
+                    <div class="flex gap-1">
+                        <button onclick="exportBackup()" class="px-3 py-1.5 bg-slate-800 text-white rounded-lg text-[10px] font-black uppercase">Backup</button>
+                        <button onclick="resetWorkspace()" class="px-3 py-1.5 bg-red-500 text-white rounded-lg text-[10px] font-black uppercase hover:bg-red-600">Reset</button>
+                    </div>
+                </div>
+                <label class="block w-full text-center px-4 py-2 bg-white/15 text-white rounded-xl text-[10px] font-black cursor-pointer hover:bg-white/20 uppercase italic mb-5">
+                    Import DB <input type="file" class="hidden" onchange="importBackup(event)">
+                </label>
+                <div class="section-header flex justify-between items-center mb-4" onclick="toggleSection('set-section')">
+                    <h3 class="text-xs font-black tracking-widest uppercase italic">Snapshots</h3>
+                    <span id="set-section-icon" class="text-[10px] opacity-50">▲</span>
+                </div>
+                <div id="set-section" class="space-y-2 max-h-[250px] overflow-y-auto custom-scroll pr-1"></div>
+                <button onclick="saveCombinedSet()" class="w-full mt-3 bg-white/20 text-white py-2 rounded-xl font-black text-[10px] hover:bg-white/30 uppercase tracking-widest italic transition-all">💾 Snapshot Current Hub</button>
             </div>
         </div>
     </div>
@@ -228,7 +236,7 @@
         const TYPE_COLORS = { def: '#94a3b8', pos: '#10b981', neg: '#ef4444' };
         const TYPE_LABELS = { def: '기본', pos: '호재', neg: '악재' };
         
-        let chart, compareTickers = [], alertTickers = {}, globalStockData = {}, activeHighlight = null;
+        let chart, compareTickers = [], alertTickers = {}, globalStockData = {}, activeHighlight = null, hoverPoint = null;
         let allTickerData = JSON.parse(localStorage.getItem('rd_v39_db')) || {};
         let savedCombinedSets = JSON.parse(localStorage.getItem('rd_v39_combined')) || [];
         const DEFAULT_BENCHMARKS = [
@@ -236,7 +244,7 @@
             {t:'DX-Y.NYB', n:'DXY'}, {t:'KRW=X', n:'USD/KRW'}, {t:'^TNX', n:'US10Y'}, {t:'KTB3Y.KS', n:'KR3Y'},
             {t:'GC=F', n:'GOLD'}, {t:'SI=F', n:'SILVER'}, {t:'BTC-USD', n:'BTC'}, {t:'ETH-USD', n:'ETH'}
         ];
-        let benchmarkList = JSON.parse(localStorage.getItem('rd_v39_bench')) || DEFAULT_BENCHMARKS;
+        let benchmarkList = (JSON.parse(localStorage.getItem('rd_v39_bench')) || DEFAULT_BENCHMARKS).map(item => ({ ...item, m: item.m || '' }));
         let flagHitAreas = [];
 
         function init() {
@@ -246,7 +254,27 @@
             document.getElementById('endDate').value = fmt(today);
             document.getElementById('startDate').value = fmt(lastYear);
             document.getElementById('eventDate').value = fmt(today);
-            renderBenchmarks(); renderHistoryList(); renderGlobalEvents(); renderCombinedList(); updateHubUI();
+            normalizeDataStore();
+            renderBenchmarks(); renderHistoryList(); renderUnifiedSearch(); renderGlobalEvents(); renderCombinedList(); updateHubUI();
+        }
+
+
+        function normalizeDataStore() {
+            Object.values(allTickerData).forEach(entry => {
+                entry.events = (entry.events || []).map((event, idx) => ({ ...event, id: event.id || `event-${idx}-${Math.random().toString(36).slice(2, 8)}` }));
+            });
+        }
+
+        function getFeedSearchValue() {
+            return (document.getElementById('feedSearch')?.value || '').trim().toLowerCase();
+        }
+
+        function toggleSidePanel(side) {
+            const panel = document.getElementById(`${side}Panel`);
+            const button = document.getElementById(`${side}PanelToggle`);
+            panel.classList.toggle('hidden');
+            const isHidden = panel.classList.contains('hidden');
+            button.innerText = `${isHidden ? 'Show' : 'Hide'} ${side === 'left' ? 'Left' : 'Right'} Panel`;
         }
 
         function resetWorkspace() {
@@ -434,7 +462,7 @@
                 compareTickers.forEach((t, i) => {
                     outSub.innerHTML += `<div class="flex items-center gap-2 font-black text-[11px]" style="color:${COLORS[i % COLORS.length]}"><span>${t}</span><span class="text-slate-300">|</span><span class="text-slate-400 font-bold uppercase">${allTickerData[t]?.company || t}</span></div>`;
                 });
-                renderChart(); refreshEventUI(); renderHistoryList(); renderGlobalEvents();
+                renderChart(); refreshEventUI(); renderUnifiedSearch(); renderHistoryList(); renderGlobalEvents();
             } catch (e) { }
             finally { document.getElementById('loading').style.display = 'none'; }
         }
@@ -445,6 +473,38 @@
             const isMulti = compareTickers.length > 1;
             const merged = getSortedMergedEvents();
             flagHitAreas = [];
+
+            const hoverPlugin = {
+                id: 'hoverIndicator',
+                afterDatasetsDraw: (c) => {
+                    if (!hoverPoint) return;
+                    const meta = c.getDatasetMeta(hoverPoint.datasetIndex);
+                    const point = meta?.data?.[hoverPoint.index];
+                    const dataset = c.data.datasets[hoverPoint.datasetIndex];
+                    if (!point || !dataset) return;
+                    const { ctx, chartArea: { top, bottom } } = c;
+                    ctx.save();
+                    ctx.setLineDash([6, 6]);
+                    ctx.strokeStyle = dataset.borderColor + '88';
+                    ctx.beginPath();
+                    ctx.moveTo(point.x, top);
+                    ctx.lineTo(point.x, bottom);
+                    ctx.stroke();
+                    ctx.setLineDash([]);
+                    ctx.lineWidth = 3;
+                    ctx.strokeStyle = dataset.borderColor;
+                    ctx.fillStyle = '#ffffff';
+                    ctx.beginPath();
+                    ctx.arc(point.x, point.y, 7, 0, Math.PI * 2);
+                    ctx.fill();
+                    ctx.stroke();
+                    ctx.fillStyle = dataset.borderColor;
+                    ctx.font = '900 10px Pretendard';
+                    ctx.textAlign = 'left';
+                    ctx.fillText(dataset.label.replace(/\..*/, ''), point.x + 10, point.y - 10);
+                    ctx.restore();
+                }
+            };
 
             const numberingPlugin = {
                 id: 'numbering',
@@ -513,10 +573,12 @@
                         
                         // Find index by X position
                         const points = chart.getElementsAtEventForMode(e.native, 'index', { intersect: false }, true);
+                        const nearestPoint = chart.getElementsAtEventForMode(e.native, 'nearest', { intersect: false }, true);
                         const tip = document.getElementById('intelTooltip');
                         
                         if (points.length > 0) {
                             const idx = points[0].index;
+                            hoverPoint = nearestPoint[0] ? { datasetIndex: nearestPoint[0].datasetIndex, index: nearestPoint[0].index } : null;
                             const targetDate = chart.data.labels[idx];
                             
                             // Cursor Styling
@@ -570,7 +632,8 @@
                                 });
                             } else { evSec.classList.add('hidden'); }
 
-                        } else { tip.style.display = 'none'; }
+                        } else { tip.style.display = 'none'; hoverPoint = null; e.native.target.style.cursor = 'default'; }
+                        chart.draw();
                     },
                     onClick: (e) => {
                         const rect = e.chart.canvas.getBoundingClientRect();
@@ -579,7 +642,7 @@
                     },
                     plugins: { legend: { display: false }, tooltip: { enabled: false } },
                     scales: { x: { display: false }, y: { ticks: { font: { weight: 'bold' } }, grid: { color: '#f1f5f9' } } }
-                }, plugins: [alertLinePlugin, numberingPlugin]
+                }, plugins: [alertLinePlugin, hoverPlugin, numberingPlugin]
             });
         }
 
@@ -597,13 +660,14 @@
             
             const cur = pts[idx];
             allTickerData[t].events.push({ 
+                id: `event-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
                 date: d, title, desc, type, 
                 diff: cur.diff_today, 
                 pct: cur.change_today, 
                 priceAt: cur.price 
             });
             allTickerData[t].lastUpdate = new Date().toISOString();
-            saveData(); refreshEventUI(); renderChart(); renderGlobalEvents(); renderHistoryList();
+            saveData(); refreshEventUI(); renderChart(); renderUnifiedSearch(); renderGlobalEvents(); renderHistoryList();
         }
 
         function focusEvent(t, d) {
@@ -611,35 +675,77 @@
             if (el) { el.scrollIntoView({ behavior: 'smooth', block: 'center' }); document.querySelectorAll('.focused-card').forEach(c => c.classList.remove('focused-card')); el.classList.add('focused-card'); activeHighlight = { ticker: t, date: d }; chart.draw(); setTimeout(() => { el.classList.remove('focused-card'); activeHighlight = null; chart.draw(); }, 3000); }
         }
 
-        function removeEvent(t, d) { if(confirm("Del?")) { allTickerData[t].events = allTickerData[t].events.filter(e => e.date !== d); saveData(); refreshEventUI(); renderChart(); } }
+        function removeEvent(t, d) { if(confirm("Del?")) { allTickerData[t].events = allTickerData[t].events.filter(e => e.date !== d); saveData(); refreshEventUI(); renderChart(); renderUnifiedSearch(); renderGlobalEvents(); renderHistoryList(); } }
         function toggleSection(id) { const sec = document.getElementById(id); const isHidden = sec.classList.toggle('hidden'); document.getElementById(id+'-icon').innerText = isHidden ? '▼' : '▲'; }
-        function getSortedMergedEvents() { let m = []; compareTickers.forEach(t => { if(allTickerData[t]) allTickerData[t].events.forEach(e => m.push({ ...e, ticker: t })); }); return m.sort((a,b) => new Date(a.date) - new Date(b.date)); }
+        function getSortedMergedEvents() { let m = []; compareTickers.forEach(t => { if(allTickerData[t]) allTickerData[t].events.forEach(e => m.push({ ...e, ticker: t, _eventRef: e })); }); return m.sort((a,b) => new Date(a.date) - new Date(b.date)); }
         function getTickerEventNumber(event) {
-            return getSortedMergedEvents().filter(e => e.ticker === event.ticker).findIndex(e => e === event) + 1;
+            const ref = event._eventRef || event;
+            const index = getSortedMergedEvents().filter(e => e.ticker === event.ticker).findIndex(e => (e._eventRef || e) === ref); return index >= 0 ? index + 1 : 1;
         }
         function saveData() { localStorage.setItem('rd_v39_db', JSON.stringify(allTickerData)); }
         
         function renderHistoryList() {
             const list = document.getElementById('historyList'); list.innerHTML = '';
-            const keys = Object.keys(allTickerData).filter(t => !t.startsWith('^') && allTickerData[t].events.length > 0);
-            if(keys.length === 0) { list.innerHTML = '<p class="text-[10px] text-slate-400 font-bold italic uppercase">DB Empty.</p>'; return; }
+            const query = getFeedSearchValue();
+            const benchmarkNotes = benchmarkList.filter(bm => bm.m && [bm.t, bm.n, bm.m].join(' ').toLowerCase().includes(query));
+            const keys = Object.keys(allTickerData).filter(t => !t.startsWith('^') && ((allTickerData[t].events.length > 0) || benchmarkList.some(bm => bm.t === t && bm.m))).filter(t => {
+                const info = allTickerData[t];
+                return !query || [t, info.company || '', ...(info.events || []).flatMap(ev => [ev.title || '', ev.desc || ''])].join(' ').toLowerCase().includes(query);
+            });
+            if(keys.length === 0 && benchmarkNotes.length === 0) { list.innerHTML = '<p class="text-[10px] text-slate-400 font-bold italic uppercase">DB Empty.</p>'; return; }
+            benchmarkNotes.forEach(bm => {
+                const item = document.createElement('div'); item.className = "p-3 bg-amber-50 border border-amber-200 rounded-xl shadow-sm mb-2 cursor-pointer hover:border-amber-400 transition-all";
+                item.onclick = () => addBenchmark(bm.t, bm.n);
+                item.innerHTML = `<div class="flex justify-between font-black text-amber-900"><span>${bm.n}</span><span class="text-[8px] bg-amber-500 text-white px-1 rounded">${bm.t}</span></div><div class="text-[8px] text-amber-600 font-black uppercase mt-1">Benchmark Memo</div><div class="text-[10px] text-amber-800 font-medium mt-1 leading-relaxed">${bm.m}</div>`;
+                list.appendChild(item);
+            });
             keys.forEach(t => {
                 const info = allTickerData[t];
-                const item = document.createElement('div'); item.className = "p-3 bg-white border border-slate-100 rounded-xl shadow-sm mb-1 cursor-pointer hover:border-blue-500 transition-all";
+                const benchmarkMemo = benchmarkList.find(bm => bm.t === t && bm.m)?.m;
+                const item = document.createElement('div'); item.className = "p-3 bg-white border border-slate-100 rounded-xl shadow-sm mb-2 cursor-pointer hover:border-blue-500 transition-all";
                 item.onclick = () => { if(!compareTickers.includes(t)) addToComparison(t, info.company); };
-                item.innerHTML = `<div class="flex justify-between font-black text-slate-800"><span>${info.company}</span><span class="text-[8px] bg-slate-900 text-white px-1 rounded">${t}</span></div><div class="text-[8px] text-slate-400 font-bold uppercase">${info.events.length} Events | ${new Date(info.lastUpdate).toLocaleDateString()}</div>`;
+                item.innerHTML = `<div class="flex justify-between font-black text-slate-800"><span>${info.company}</span><span class="text-[8px] bg-slate-900 text-white px-1 rounded">${t}</span></div><div class="text-[8px] text-slate-400 font-bold uppercase">${info.events.length} Events | ${new Date(info.lastUpdate).toLocaleDateString()}</div>${benchmarkMemo ? `<div class="mt-2 text-[10px] text-amber-700 font-medium leading-relaxed border-t border-amber-100 pt-2">${benchmarkMemo}</div>` : ''}`;
                 list.appendChild(item);
+            });
+        }
+
+        function renderUnifiedSearch() {
+            const list = document.getElementById('searchResultList');
+            const query = getFeedSearchValue();
+            list.innerHTML = '';
+            if (!query) return;
+            const results = [];
+            benchmarkList.forEach(bm => {
+                const hay = [bm.t, bm.n, bm.m || ''].join(' ').toLowerCase();
+                if (hay.includes(query)) results.push({ type: 'benchmark', title: bm.n, sub: bm.t, desc: bm.m || 'Benchmark', action: () => addBenchmark(bm.t, bm.n) });
+            });
+            Object.entries(allTickerData).forEach(([ticker, info]) => {
+                const hay = [ticker, info.company || ''].join(' ').toLowerCase();
+                if (hay.includes(query)) results.push({ type: 'asset', title: info.company || ticker, sub: ticker, desc: `${info.events.length} events saved`, action: () => addToComparison(ticker, info.company) });
+                (info.events || []).forEach(ev => {
+                    const evHay = [ticker, info.company || '', ev.title || '', ev.desc || ''].join(' ').toLowerCase();
+                    if (evHay.includes(query)) results.push({ type: 'event', title: ev.title, sub: `${ticker} | ${ev.date}`, desc: ev.desc || TYPE_LABELS[ev.type], action: () => { if(!compareTickers.includes(ticker)) addToComparison(ticker, info.company); setTimeout(() => focusEvent(ticker, ev.date), 800); } });
+                });
+            });
+            results.slice(0, 8).forEach(result => {
+                const node = document.createElement('div');
+                node.className = 'search-result-card p-3 rounded-xl border border-slate-700 bg-slate-800/80 cursor-pointer transition-all';
+                node.onclick = result.action;
+                node.innerHTML = `<div class="flex justify-between items-start gap-3"><div><div class="text-[10px] font-black text-white uppercase">${result.title}</div><div class="text-[9px] text-slate-400 font-black mt-1">${result.sub}</div></div><span class="text-[8px] text-blue-400 font-black uppercase">${result.type}</span></div><div class="text-[10px] text-slate-300 mt-2 leading-relaxed">${result.desc}</div>`;
+                list.appendChild(node);
             });
         }
 
         function renderGlobalEvents() {
             const list = document.getElementById('globalEventList'); list.innerHTML = '';
+            const query = getFeedSearchValue();
             let items = []; Object.keys(allTickerData).forEach(t => allTickerData[t].events.forEach(e => items.push({...e, ticker: t})));
-            items.sort((a,b) => new Date(b.date) - new Date(a.date)).reverse().forEach(ev => {
+            items = items.filter(ev => !query || [ev.ticker, allTickerData[ev.ticker]?.company || '', ev.title || '', ev.desc || ''].join(' ').toLowerCase().includes(query));
+            items.sort((a,b) => new Date(b.date) - new Date(a.date)).forEach(ev => {
                 const node = document.createElement('div'); node.className = "p-3 bg-slate-800 rounded-xl border-l-4 mb-2 cursor-pointer";
                 node.style.borderLeftColor = TYPE_COLORS[ev.type];
                 node.onclick = () => { if(!compareTickers.includes(ev.ticker)) addToComparison(ev.ticker); setTimeout(()=>focusEvent(ev.ticker, ev.date), 1000); };
-                node.innerHTML = `<div class="flex justify-between text-[8px] text-slate-400 font-black"><span>${ev.date}</span><span>${ev.ticker}</span></div><div class="text-xs font-black text-white truncate uppercase italic tracking-tighter">${ev.title}</div>`;
+                node.innerHTML = `<div class="flex justify-between text-[8px] text-slate-400 font-black"><span>${ev.date}</span><span>${ev.ticker}</span></div><div class="text-xs font-black text-white truncate uppercase italic tracking-tighter">${ev.title}</div><div class="text-[10px] text-slate-500 font-medium mt-1 truncate">${ev.desc || allTickerData[ev.ticker]?.company || ''}</div>`;
                 list.appendChild(node);
             });
         }
@@ -702,14 +808,15 @@
         function renderBenchmarks() {
             const container = document.getElementById('benchmarkContainer'); container.innerHTML = '';
             benchmarkList.forEach((bm, i) => {
-                const btn = document.createElement('button'); btn.className = "benchmark-btn"; btn.innerText = bm.n; btn.onclick = () => addBenchmark(bm.t, bm.n);
-                btn.innerHTML += `<span class="benchmark-del" onclick="event.stopPropagation(); removeBenchmark(${i})">×</span>`;
+                const btn = document.createElement('button'); btn.className = "benchmark-btn"; btn.onclick = () => addBenchmark(bm.t, bm.n);
+                btn.title = bm.m ? `${bm.n} | ${bm.m}` : bm.n;
+                btn.innerHTML = `${bm.n}${bm.m ? '<span class="ml-1 text-amber-500">•</span>' : ''}<span class="benchmark-del" onclick="event.stopPropagation(); removeBenchmark(${i})">×</span>`;
                 container.appendChild(btn);
             });
         }
         function addBenchmark(t, n) { addToComparison(t, n); buildTimeline(); }
-        function addNewBenchmark() { const t = prompt("Ticker:"); const n = prompt("Name:"); if(t && n) { benchmarkList.push({t: t.toUpperCase(), n: n.toUpperCase()}); localStorage.setItem('rd_v39_bench', JSON.stringify(benchmarkList)); renderBenchmarks(); } }
-        function removeBenchmark(i) { if(confirm("삭제?")) { benchmarkList.splice(i, 1); localStorage.setItem('rd_v39_bench', JSON.stringify(benchmarkList)); renderBenchmarks(); } }
+        function addNewBenchmark() { const t = prompt("Ticker:"); const n = prompt("Name:"); const m = prompt("Memo (optional):", "") || ''; if(t && n) { benchmarkList.push({t: t.toUpperCase(), n: n.toUpperCase(), m}); localStorage.setItem('rd_v39_bench', JSON.stringify(benchmarkList)); renderBenchmarks(); renderHistoryList(); renderUnifiedSearch(); } }
+        function removeBenchmark(i) { if(confirm("삭제?")) { benchmarkList.splice(i, 1); localStorage.setItem('rd_v39_bench', JSON.stringify(benchmarkList)); renderBenchmarks(); renderHistoryList(); renderUnifiedSearch(); } }
 
 
         window.onload = init;
