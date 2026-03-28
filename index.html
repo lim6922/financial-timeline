@@ -32,6 +32,8 @@
         .pop-item { border-bottom: 1px solid rgba(255,255,255,0.1); padding: 8px 0; }
         .pop-item:last-child { border-bottom: none; }
         .section-header { cursor: pointer; user-select: none; }
+        .event-type-option input:checked + label { background: #ffffff; color: #0f172a; box-shadow: 0 1px 3px rgba(15, 23, 42, 0.08); }
+        .event-type-option input:focus-visible + label { outline: 2px solid #2563eb; outline-offset: 2px; }
     </style>
 </head>
 <body class="p-4 lg:p-6 text-slate-900">
@@ -99,6 +101,42 @@
                         </div>
                     </div>
                     <div id="comparisonTags" class="flex flex-wrap gap-2 min-h-[10px]"></div>
+                    <div class="pt-4 border-t border-slate-200 space-y-4">
+                        <div class="grid grid-cols-2 gap-3 text-[10px] font-black text-slate-400 uppercase tracking-widest">
+                            <div>Start Date<input id="startDate" type="date" class="w-full border-b-2 p-1 font-bold bg-transparent outline-none focus:border-blue-500"></div>
+                            <div>End Date<input id="endDate" type="date" class="w-full border-b-2 p-1 font-bold bg-transparent outline-none focus:border-blue-500"></div>
+                        </div>
+                        <button onclick="buildTimeline()" class="w-full bg-slate-100 text-slate-400 py-4 rounded-2xl font-black hover:bg-blue-50 hover:text-blue-600 transition-all uppercase text-xs tracking-widest italic">Manual Force Sync</button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Logger -->
+            <div class="bg-white p-6 rounded-[2.5rem] shadow-xl border border-slate-200 overflow-hidden">
+                <div class="section-header flex justify-between items-center mb-4" onclick="toggleSection('logger-hub')">
+                    <h3 class="text-xs font-black tracking-widest uppercase italic text-slate-400">Insight Logger</h3>
+                    <span id="logger-hub-icon" class="text-[10px] text-slate-300">▲</span>
+                </div>
+                <div id="logger-hub" class="space-y-4">
+                    <select id="eventTargetTicker" class="w-full text-[10px] font-black bg-slate-50 p-3 rounded-xl border-none cursor-pointer outline-none"></select>
+                    <div class="flex gap-1 p-1 bg-slate-100 rounded-xl cursor-default" role="radiogroup" aria-label="이벤트 유형 선택">
+                        <div class="event-type-option flex-1">
+                            <input type="radio" name="eventType" id="typeDefault" value="def" class="sr-only" checked>
+                            <label for="typeDefault" class="block text-center py-2 text-[10px] font-black rounded-lg cursor-pointer text-slate-500 hover:bg-white/80 hover:text-slate-900 transition-all select-none">기본</label>
+                        </div>
+                        <div class="event-type-option flex-1">
+                            <input type="radio" name="eventType" id="typePos" value="pos" class="sr-only">
+                            <label for="typePos" class="block text-center py-2 text-[10px] font-black rounded-lg cursor-pointer text-slate-500 hover:bg-white/80 hover:text-slate-900 transition-all select-none">호재</label>
+                        </div>
+                        <div class="event-type-option flex-1">
+                            <input type="radio" name="eventType" id="typeNeg" value="neg" class="sr-only">
+                            <label for="typeNeg" class="block text-center py-2 text-[10px] font-black rounded-lg cursor-pointer text-slate-500 hover:bg-white/80 hover:text-slate-900 transition-all select-none">악재</label>
+                        </div>
+                    </div>
+                    <input id="eventDate" type="date" class="w-full border p-3 rounded-xl text-xs font-bold outline-none">
+                    <input id="eventTitle" type="text" placeholder="사건 제목" class="w-full border p-3 rounded-xl text-xs font-black outline-none">
+                    <textarea id="eventDesc" rows="2" placeholder="분석 기록" class="w-full border p-3 rounded-xl text-xs resize-none font-medium outline-none"></textarea>
+                    <button onclick="addEvent()" class="w-full bg-slate-900 text-white py-3 rounded-xl font-black text-xs hover:bg-black transition-all shadow-md">+ Add Insight</button>
                 </div>
             </div>
 
@@ -112,40 +150,16 @@
                     <div class="flex items-center justify-between bg-blue-50 p-4 rounded-2xl border border-blue-100">
                         <span class="text-[10px] font-black text-blue-800 uppercase italic">Master Alert Filter</span>
                         <label class="relative inline-flex items-center cursor-pointer">
-                            <input type="checkbox" id="showVolAlert" onchange="chart.draw()" class="sr-only peer">
+                            <input type="checkbox" id="showVolAlert" onchange="if(chart) chart.draw()" class="sr-only peer">
                             <div class="w-9 h-5 bg-slate-200 rounded-full peer peer-checked:bg-blue-600 after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:after:translate-x-full"></div>
                         </label>
                     </div>
-                    <div id="alertConfigList" class="space-y-2 max-h-[250px] overflow-y-auto custom-scroll pr-1"></div>
-                </div>
-            </div>
-
-            <!-- Range & Sync -->
-            <div class="bg-white p-6 rounded-[2.5rem] shadow-xl border border-slate-200">
-                <div class="grid grid-cols-2 gap-3 text-[10px] font-black text-slate-400 uppercase tracking-widest mb-4">
-                    <div>Start Date<input id="startDate" type="date" class="w-full border-b-2 p-1 font-bold bg-transparent outline-none focus:border-blue-500"></div>
-                    <div>End Date<input id="endDate" type="date" class="w-full border-b-2 p-1 font-bold bg-transparent outline-none focus:border-blue-500"></div>
-                </div>
-                <button onclick="buildTimeline()" class="w-full bg-slate-100 text-slate-400 py-4 rounded-2xl font-black hover:bg-blue-50 hover:text-blue-600 transition-all uppercase text-xs tracking-widest italic">Manual Force Sync</button>
-            </div>
-
-            <!-- Logger -->
-            <div class="bg-white p-6 rounded-[2.5rem] shadow-xl border border-slate-200 overflow-hidden">
-                <div class="section-header flex justify-between items-center mb-4" onclick="toggleSection('logger-hub')">
-                    <h3 class="text-xs font-black tracking-widest uppercase italic text-slate-400">Insight Logger</h3>
-                    <span id="logger-hub-icon" class="text-[10px] text-slate-300">▲</span>
-                </div>
-                <div id="logger-hub" class="space-y-4">
-                    <select id="eventTargetTicker" class="w-full text-[10px] font-black bg-slate-50 p-3 rounded-xl border-none cursor-pointer outline-none"></select>
-                    <div class="flex gap-1 p-1 bg-slate-100 rounded-xl">
-                        <div class="flex-1"><input type="radio" name="eventType" id="typeDefault" value="def" class="hidden" checked><label for="typeDefault" class="block text-center py-2 text-[10px] font-black rounded-lg cursor-pointer transition-all">기본</label></div>
-                        <div class="flex-1"><input type="radio" name="eventType" id="typePos" value="pos" class="hidden"><label for="typePos" class="block text-center py-2 text-[10px] font-black rounded-lg cursor-pointer transition-all">호재</label></div>
-                        <div class="flex-1"><input type="radio" name="eventType" id="typeNeg" value="neg" class="hidden"><label for="typeNeg" class="block text-center py-2 text-[10px] font-black rounded-lg cursor-pointer transition-all">악재</label></div>
+                    <div class="grid grid-cols-[minmax(0,1fr)_88px_auto] gap-2 items-center bg-slate-50 p-3 rounded-2xl border border-slate-100">
+                        <select id="alertTickerInput" class="w-full text-[10px] font-black bg-white p-3 rounded-xl border border-slate-200 cursor-pointer outline-none"></select>
+                        <input id="alertThresholdInput" type="number" step="0.5" value="-3" class="w-full text-center text-[10px] font-black bg-white border border-slate-200 rounded-xl p-3 outline-none text-red-500">
+                        <button onclick="addAlertConfig()" class="px-4 py-3 rounded-xl bg-slate-900 text-white text-[10px] font-black uppercase tracking-widest hover:bg-black transition-all">Add</button>
                     </div>
-                    <input id="eventDate" type="date" class="w-full border p-3 rounded-xl text-xs font-bold outline-none">
-                    <input id="eventTitle" type="text" placeholder="사건 제목" class="w-full border p-3 rounded-xl text-xs font-black outline-none">
-                    <textarea id="eventDesc" rows="2" placeholder="분석 기록" class="w-full border p-3 rounded-xl text-xs resize-none font-medium outline-none"></textarea>
-                    <button onclick="addEvent()" class="w-full bg-slate-900 text-white py-3 rounded-xl font-black text-xs hover:bg-black transition-all shadow-md">+ Add Insight</button>
+                    <div id="alertConfigList" class="space-y-2 max-h-[320px] overflow-y-auto custom-scroll pr-1"></div>
                 </div>
             </div>
 
@@ -232,7 +246,7 @@
             document.getElementById('endDate').value = fmt(today);
             document.getElementById('startDate').value = fmt(lastYear);
             document.getElementById('eventDate').value = fmt(today);
-            renderBenchmarks(); renderHistoryList(); renderGlobalEvents(); renderCombinedList();
+            renderBenchmarks(); renderHistoryList(); renderGlobalEvents(); renderCombinedList(); updateHubUI();
         }
 
         function resetWorkspace() {
@@ -284,38 +298,109 @@
             updateHubUI(); buildTimeline();
         }
 
+        function createAlertConfig(threshold = -3) {
+            return { id: `alert-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`, threshold: parseFloat(threshold) };
+        }
+
+        function normalizeAlertTickers(alerts = {}) {
+            const normalized = {};
+            Object.entries(alerts || {}).forEach(([ticker, config]) => {
+                const list = Array.isArray(config) ? config : (config && typeof config === 'object' ? [config] : []);
+                const clean = list.map((item, idx) => {
+                    const threshold = parseFloat(item?.threshold);
+                    if (!Number.isFinite(threshold)) return null;
+                    return { id: item?.id || `alert-${ticker}-${idx}-${Math.random().toString(36).slice(2, 8)}`, threshold };
+                }).filter(Boolean);
+                if (clean.length) normalized[ticker] = clean;
+            });
+            return normalized;
+        }
+
+        function getAlertConfigs(ticker) {
+            return Array.isArray(alertTickers[ticker]) ? alertTickers[ticker] : [];
+        }
+
         function removeFromComparison(ticker) {
-            compareTickers = compareTickers.filter(t => t !== ticker); delete alertTickers[ticker];
-            updateHubUI(); if(compareTickers.length > 0) buildTimeline(); else { if(chart) chart.destroy(); chart = null; document.getElementById('eventGrid').innerHTML = ''; }
+            compareTickers = compareTickers.filter(t => t !== ticker);
+            delete alertTickers[ticker];
+            updateHubUI();
+            if(compareTickers.length > 0) buildTimeline();
+            else { if(chart) chart.destroy(); chart = null; document.getElementById('eventGrid').innerHTML = ''; }
         }
 
-        function toggleAlertSubscription(ticker) {
-            if (alertTickers[ticker]) delete alertTickers[ticker]; else alertTickers[ticker] = { threshold: -3 };
-            updateHubUI(); if(chart) chart.draw();
+        function addAlertConfig(ticker = null, threshold = null) {
+            const targetTicker = ticker || document.getElementById('alertTickerInput').value;
+            const thresholdInput = document.getElementById('alertThresholdInput');
+            const parsedThreshold = parseFloat(threshold ?? thresholdInput.value);
+            if (!targetTicker || !Number.isFinite(parsedThreshold)) return;
+            if (!alertTickers[targetTicker]) alertTickers[targetTicker] = [];
+            alertTickers[targetTicker].push(createAlertConfig(parsedThreshold));
+            thresholdInput.value = parsedThreshold;
+            updateHubUI();
+            if (chart) chart.draw();
         }
 
-        function updateThreshold(ticker, val) { if (alertTickers[ticker]) { alertTickers[ticker].threshold = parseFloat(val); chart.draw(); } }
+        function updateThreshold(ticker, alertId, val) {
+            const threshold = parseFloat(val);
+            if (!Number.isFinite(threshold)) return;
+            const target = getAlertConfigs(ticker).find(config => config.id === alertId);
+            if (!target) return;
+            target.threshold = threshold;
+            if (chart) chart.draw();
+        }
+
+        function removeAlertConfig(ticker, alertId) {
+            const next = getAlertConfigs(ticker).filter(config => config.id !== alertId);
+            if (next.length) alertTickers[ticker] = next;
+            else delete alertTickers[ticker];
+            updateHubUI();
+            if (chart) chart.draw();
+        }
 
         function updateHubUI() {
             const tagContainer = document.getElementById('comparisonTags');
             const alertList = document.getElementById('alertConfigList');
             const eventTarget = document.getElementById('eventTargetTicker');
-            tagContainer.innerHTML = ''; alertList.innerHTML = ''; eventTarget.innerHTML = '';
-            
+            const alertTickerInput = document.getElementById('alertTickerInput');
+            tagContainer.innerHTML = '';
+            alertList.innerHTML = '';
+            eventTarget.innerHTML = '';
+            alertTickerInput.innerHTML = '';
+
+            if (compareTickers.length === 0) {
+                alertTickerInput.innerHTML = '<option value="">종목 없음</option>';
+                alertList.innerHTML = '<div class="p-4 rounded-2xl bg-slate-50 border border-dashed border-slate-200 text-[10px] font-black text-slate-400 uppercase italic">비교 종목을 먼저 추가하세요.</div>';
+                return;
+            }
+
             compareTickers.forEach((ticker, idx) => {
                 const color = COLORS[idx % COLORS.length];
-                const isAlerting = !!alertTickers[ticker];
+                const configs = getAlertConfigs(ticker);
                 tagContainer.innerHTML += `<span class="px-3 py-1.5 rounded-full text-[10px] font-black text-white shadow-sm flex items-center gap-2" style="background:${color}">${ticker.replace(/\.KS|\.KQ/,'')}<button onclick="removeFromComparison('${ticker}')">×</button></span>`;
-                alertList.innerHTML += `
-                    <div class="flex items-center gap-3 p-3 rounded-2xl border transition-all ${isAlerting ? 'bg-white border-blue-200 shadow-sm' : 'bg-slate-50 border-slate-100 opacity-60'}">
-                        <div class="w-2 h-2 rounded-full" style="background:${color}"></div>
-                        <div class="flex-1 text-[10px] font-black truncate">${ticker}</div>
-                        <div class="flex items-center gap-2">
-                            <button onclick="toggleAlertSubscription('${ticker}')" class="text-base transition-all ${isAlerting ? 'grayscale-0' : 'grayscale text-slate-300'}">🔔</button>
-                            <input type="number" step="0.5" value="${isAlerting ? alertTickers[ticker].threshold : -3}" onchange="updateThreshold('${ticker}', this.value)" class="w-12 text-center text-[10px] font-black bg-slate-100 border-none rounded p-1 outline-none text-red-500" ${!isAlerting ? 'disabled' : ''}>
-                        </div>
-                    </div>`;
                 eventTarget.innerHTML += `<option value="${ticker}">${ticker}</option>`;
+                alertTickerInput.innerHTML += `<option value="${ticker}">${ticker}</option>`;
+
+                const rows = configs.length ? configs.map((config, alertIdx) => `
+                    <div class="flex items-center gap-2">
+                        <span class="w-10 text-[9px] font-black text-slate-400 uppercase">#${alertIdx + 1}</span>
+                        <input type="number" step="0.5" value="${config.threshold}" onchange="updateThreshold('${ticker}', '${config.id}', this.value)" class="flex-1 text-center text-[10px] font-black bg-slate-100 border border-slate-200 rounded-xl p-2 outline-none text-red-500">
+                        <button onclick="removeAlertConfig('${ticker}', '${config.id}')" class="px-3 py-2 rounded-xl bg-red-50 text-red-500 text-[10px] font-black hover:bg-red-100 transition-all">DEL</button>
+                    </div>`).join('') : '<div class="text-[10px] font-black text-slate-300 uppercase italic">등록된 알람 없음</div>';
+
+                alertList.innerHTML += `
+                    <div class="p-3 rounded-2xl border ${configs.length ? 'bg-white border-blue-200 shadow-sm' : 'bg-slate-50 border-slate-100'}">
+                        <div class="flex items-center justify-between gap-3 mb-3">
+                            <div class="flex items-center gap-2 min-w-0">
+                                <div class="w-2.5 h-2.5 rounded-full shrink-0" style="background:${color}"></div>
+                                <div class="text-[10px] font-black truncate">${ticker}</div>
+                            </div>
+                            <div class="flex items-center gap-2 shrink-0">
+                                <span class="text-[9px] font-black text-slate-300">${configs.length} ALERTS</span>
+                                <button onclick="addAlertConfig('${ticker}', document.getElementById('alertThresholdInput').value)" class="px-3 py-1.5 rounded-lg bg-slate-900 text-white text-[9px] font-black uppercase tracking-widest hover:bg-black transition-all">+ Add</button>
+                            </div>
+                        </div>
+                        <div class="space-y-2">${rows}</div>
+                    </div>`;
             });
         }
 
@@ -394,15 +479,17 @@
                     if (!document.getElementById('showVolAlert').checked) return;
                     const { ctx, chartArea: { top, bottom }, scales: { x } } = c;
                     Object.keys(alertTickers).forEach(ticker => {
-                        const config = alertTickers[ticker];
+                        const configs = getAlertConfigs(ticker);
                         const data = globalStockData[ticker];
-                        if (!data) return;
+                        if (!data || configs.length === 0) return;
                         data.forEach(d => {
-                            if (parseFloat(d.change_today) <= config.threshold) {
-                                const xPos = x.getPixelForValue(d.date);
-                                ctx.save(); ctx.beginPath(); ctx.setLineDash([4, 4]); ctx.lineWidth = 1; ctx.strokeStyle = COLORS[compareTickers.indexOf(ticker) % COLORS.length] + '55';
-                                ctx.moveTo(xPos, top); ctx.lineTo(xPos, bottom); ctx.stroke(); ctx.restore();
-                            }
+                            configs.forEach(config => {
+                                if (parseFloat(d.change_today) <= config.threshold) {
+                                    const xPos = x.getPixelForValue(d.date);
+                                    ctx.save(); ctx.beginPath(); ctx.setLineDash([4, 4]); ctx.lineWidth = 1; ctx.strokeStyle = COLORS[compareTickers.indexOf(ticker) % COLORS.length] + '55';
+                                    ctx.moveTo(xPos, top); ctx.lineTo(xPos, bottom); ctx.stroke(); ctx.restore();
+                                }
+                            });
                         });
                     });
                 }
@@ -591,7 +678,7 @@
         function saveCombinedSet() {
             if (compareTickers.length === 0) return;
             const title = prompt("Set Name:", "Analysis Environment"); if (!title) return;
-            savedCombinedSets.push({ id: Date.now(), title, tickers: [...compareTickers], alerts: JSON.parse(JSON.stringify(alertTickers)), start: document.getElementById('startDate').value, end: document.getElementById('endDate').value, timestamp: new Date().toISOString() });
+            savedCombinedSets.push({ id: Date.now(), title, tickers: [...compareTickers], alerts: JSON.parse(JSON.stringify(normalizeAlertTickers(alertTickers))), start: document.getElementById('startDate').value, end: document.getElementById('endDate').value, timestamp: new Date().toISOString() });
             localStorage.setItem('rd_v39_combined', JSON.stringify(savedCombinedSets)); renderCombinedList();
         }
 
@@ -599,7 +686,7 @@
             const list = document.getElementById('set-section'); list.innerHTML = '';
             savedCombinedSets.slice().reverse().forEach(set => {
                 const item = document.createElement('div'); item.className = "p-3 bg-white/10 rounded-xl hover:bg-white/20 cursor-pointer mb-2 relative group transition-all";
-                item.onclick = () => { compareTickers = [...set.tickers]; alertTickers = set.alerts || {}; document.getElementById('startDate').value = set.start; document.getElementById('endDate').value = set.end; updateHubUI(); buildTimeline(); };
+                item.onclick = () => { compareTickers = [...set.tickers]; alertTickers = normalizeAlertTickers(set.alerts || {}); document.getElementById('startDate').value = set.start; document.getElementById('endDate').value = set.end; updateHubUI(); buildTimeline(); };
                 item.innerHTML = `<div class="text-[11px] font-black">${set.title}</div><div class="text-[8px] opacity-60">${set.tickers.length} Assets | ${new Date(set.timestamp).toLocaleDateString()}</div><button onclick="event.stopPropagation(); deleteSet(${set.id})" class="absolute top-2 right-2 opacity-0 group-hover:opacity-100 text-white">🗑</button>`;
                 list.appendChild(item);
             });
