@@ -95,6 +95,28 @@
                         </div>
                     </div>
                     <div id="comparisonTags" class="flex flex-wrap gap-2 min-h-[10px]"></div>
+                    <div class="space-y-3 p-4 bg-slate-50 rounded-[2rem] border border-slate-100 shadow-inner">
+                        <div class="flex items-center justify-between gap-3">
+                            <span class="text-[9px] font-black text-slate-400 uppercase tracking-widest">Chart Mode</span>
+                            <span id="chartModeHint" class="text-[9px] font-black text-slate-300 uppercase">Line</span>
+                        </div>
+                        <div class="flex gap-1 p-1 bg-white rounded-xl border border-slate-200">
+                            <button id="chartModeLineBtn" onclick="setChartMode('line')" class="flex-1 py-2 rounded-lg text-[10px] font-black transition-all">Line</button>
+                            <button id="chartModeCandleBtn" onclick="setChartMode('candle')" class="flex-1 py-2 rounded-lg text-[10px] font-black transition-all">Candle</button>
+                        </div>
+                        <div class="flex items-center justify-between gap-3 px-1">
+                            <div>
+                                <div class="text-[9px] font-black text-slate-400 uppercase tracking-widest">Volume Overlay</div>
+                                <div class="text-[9px] font-bold text-slate-300 uppercase">Single Asset Only</div>
+                            </div>
+                            <button id="volumeToggleBtn" onclick="toggleVolumeOverlay()" class="px-3 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all">Off</button>
+                        </div>
+                        <div class="grid grid-cols-[minmax(0,1fr)_auto] gap-2 items-center">
+                            <input id="guideLineValue" type="number" step="0.1" placeholder="Horizontal line value" class="w-full text-center text-[10px] font-black bg-white border border-slate-200 rounded-xl p-3 outline-none text-slate-700">
+                            <button onclick="addGuideLine()" class="px-4 py-3 rounded-xl bg-slate-900 text-white text-[10px] font-black uppercase tracking-widest hover:bg-black transition-all">+ Line</button>
+                        </div>
+                        <div id="guideLineList" class="space-y-2"></div>
+                    </div>
                     <div class="pt-4 border-t border-slate-200 space-y-4">
                         <div class="grid grid-cols-2 gap-3 text-[10px] font-black text-slate-400 uppercase tracking-widest">
                             <div>Start Date<input id="startDate" type="date" class="w-full border-b-2 p-1 font-bold bg-transparent outline-none focus:border-blue-500"></div>
@@ -236,7 +258,7 @@
         const TYPE_COLORS = { def: '#94a3b8', pos: '#10b981', neg: '#ef4444' };
         const TYPE_LABELS = { def: '기본', pos: '호재', neg: '악재' };
         
-        let chart, compareTickers = [], alertTickers = {}, globalStockData = {}, activeHighlight = null, hoverPoint = null;
+        let chart, compareTickers = [], alertTickers = {}, globalStockData = {}, activeHighlight = null, hoverPoint = null, chartMode = 'line', guideLines = [], showVolume = false;
         let allTickerData = JSON.parse(localStorage.getItem('rd_v39_db')) || {};
         let savedCombinedSets = JSON.parse(localStorage.getItem('rd_v39_combined')) || [];
         const DEFAULT_BENCHMARKS = [
@@ -255,7 +277,7 @@
             document.getElementById('startDate').value = fmt(lastYear);
             document.getElementById('eventDate').value = fmt(today);
             normalizeDataStore();
-            renderBenchmarks(); renderHistoryList(); renderUnifiedSearch(); renderGlobalEvents(); renderCombinedList(); updateHubUI();
+            renderBenchmarks(); renderHistoryList(); renderUnifiedSearch(); renderGlobalEvents(); renderCombinedList(); updateHubUI(); renderGuideLineUI(); updateChartModeUI(); updateVolumeUI();
         }
 
 
@@ -280,7 +302,8 @@
                 high,
                 low,
                 close,
-                price: close
+                price: close,
+                volume: Number(point.volume ?? 0)
             };
         }
 
@@ -292,9 +315,103 @@
             button.innerText = `${isHidden ? 'Show' : 'Hide'} ${side === 'left' ? 'Left' : 'Right'} Panel`;
         }
 
+        function getEffectiveChartMode() {
+            return chartMode === 'candle' && compareTickers.length === 1 ? 'candle' : 'line';
+        }
+
+        function canShowVolumeOverlay() {
+            return compareTickers.length === 1;
+        }
+
+        function updateChartModeUI() {
+            const lineBtn = document.getElementById('chartModeLineBtn');
+            const candleBtn = document.getElementById('chartModeCandleBtn');
+            const hint = document.getElementById('chartModeHint');
+            if (!lineBtn || !candleBtn || !hint) return;
+            const activeMode = getEffectiveChartMode();
+            const isCandleFallback = chartMode === 'candle' && activeMode !== 'candle';
+            lineBtn.className = `flex-1 py-2 rounded-lg text-[10px] font-black transition-all ${activeMode === 'line' ? 'bg-slate-900 text-white' : 'text-slate-400 hover:bg-slate-100'}`;
+            candleBtn.className = `flex-1 py-2 rounded-lg text-[10px] font-black transition-all ${activeMode === 'candle' ? 'bg-slate-900 text-white' : 'text-slate-400 hover:bg-slate-100'}`;
+            hint.innerText = isCandleFallback ? 'Candle: Single Asset Only' : activeMode === 'candle' ? 'Candle' : 'Line';
+        }
+
+        function updateVolumeUI() {
+            const button = document.getElementById('volumeToggleBtn');
+            if (!button) return;
+            const enabled = canShowVolumeOverlay();
+            if (!enabled) showVolume = false;
+            button.disabled = !enabled;
+            button.className = `px-3 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all ${!enabled ? 'bg-slate-100 text-slate-300 cursor-not-allowed' : showVolume ? 'bg-blue-600 text-white hover:bg-blue-700' : 'bg-white border border-slate-200 text-slate-500 hover:bg-slate-50'}`;
+            button.innerText = !enabled ? 'Single Only' : showVolume ? 'On' : 'Off';
+        }
+
+        function setChartMode(mode) {
+            chartMode = mode;
+            updateChartModeUI();
+            updateVolumeUI();
+            renderGuideLineUI();
+            if (chart) renderChart();
+        }
+
+        function toggleVolumeOverlay() {
+            if (!canShowVolumeOverlay()) return;
+            showVolume = !showVolume;
+            updateVolumeUI();
+            if (chart) renderChart();
+        }
+
+        function getGuideLineModeLabel(mode = getEffectiveChartMode()) {
+            return mode === 'candle' || compareTickers.length === 1 ? 'Price' : 'Return %';
+        }
+
+        function addGuideLine() {
+            const input = document.getElementById('guideLineValue');
+            const value = parseFloat(input.value);
+            if (!Number.isFinite(value)) return;
+            guideLines.push({ id: `guide-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`, value, mode: getEffectiveChartMode() });
+            input.value = '';
+            renderGuideLineUI();
+            if (chart) chart.draw();
+        }
+
+        function updateGuideLine(id, value) {
+            const parsed = parseFloat(value);
+            if (!Number.isFinite(parsed)) return;
+            const line = guideLines.find(item => item.id === id);
+            if (!line) return;
+            line.value = parsed;
+            if (chart) chart.draw();
+        }
+
+        function removeGuideLine(id) {
+            guideLines = guideLines.filter(item => item.id !== id);
+            renderGuideLineUI();
+            if (chart) chart.draw();
+        }
+
+        function renderGuideLineUI() {
+            const list = document.getElementById('guideLineList');
+            if (!list) return;
+            const currentMode = getEffectiveChartMode();
+            list.innerHTML = '';
+            if (guideLines.length === 0) {
+                list.innerHTML = `<div class="text-[10px] font-black text-slate-300 uppercase italic">No horizontal lines</div>`;
+                return;
+            }
+            guideLines.forEach(line => {
+                const active = line.mode === currentMode;
+                list.innerHTML += `
+                    <div class="flex items-center gap-2 ${active ? '' : 'opacity-40'}">
+                        <span class="w-16 text-[9px] font-black text-slate-400 uppercase">${line.mode === 'candle' || line.mode === 'line' && compareTickers.length === 1 ? 'Price' : 'Return %'}</span>
+                        <input type="number" step="0.1" value="${line.value}" onchange="updateGuideLine('${line.id}', this.value)" class="flex-1 text-center text-[10px] font-black bg-white border border-slate-200 rounded-xl p-2 outline-none text-slate-700">
+                        <button onclick="removeGuideLine('${line.id}')" class="px-3 py-2 rounded-xl bg-red-50 text-red-500 text-[10px] font-black hover:bg-red-100 transition-all">DEL</button>
+                    </div>`;
+            });
+        }
+
         function resetWorkspace() {
             if(!confirm("Reset current hub? DB will remain.")) return;
-            compareTickers = []; alertTickers = {}; globalStockData = {};
+            compareTickers = []; alertTickers = {}; globalStockData = {}; showVolume = false;
             if(chart) chart.destroy(); chart = null;
             document.getElementById('outSub').innerHTML = '';
             document.getElementById('outPeriod').innerText = '----.--.--';
@@ -413,6 +530,8 @@
             if (compareTickers.length === 0) {
                 alertTickerInput.innerHTML = '<option value="">종목 없음</option>';
                 alertList.innerHTML = '<div class="p-4 rounded-2xl bg-slate-50 border border-dashed border-slate-200 text-[10px] font-black text-slate-400 uppercase italic">비교 종목을 먼저 추가하세요.</div>';
+                updateChartModeUI();
+                updateVolumeUI();
                 return;
             }
 
@@ -445,6 +564,8 @@
                         <div class="space-y-2">${rows}</div>
                     </div>`;
             });
+            updateChartModeUI();
+            updateVolumeUI();
         }
 
         // --- Intelligent Chart Engine ---
@@ -485,9 +606,14 @@
         function renderChart() {
             const ctx = document.getElementById('mainChart').getContext('2d');
             if (chart) chart.destroy();
-            const isMulti = compareTickers.length > 1;
+            const effectiveChartMode = getEffectiveChartMode();
+            const isMulti = compareTickers.length > 1 && effectiveChartMode !== 'candle';
+            const showVolumeOverlayActive = canShowVolumeOverlay() && showVolume;
             const merged = getSortedMergedEvents();
             flagHitAreas = [];
+            updateChartModeUI();
+            updateVolumeUI();
+            renderGuideLineUI();
 
             const hoverPlugin = {
                 id: 'hoverIndicator',
@@ -521,11 +647,73 @@
                 }
             };
 
+            const candlePlugin = {
+                id: 'candles',
+                afterDatasetsDraw: (c) => {
+                    if (effectiveChartMode !== 'candle') return;
+                    const { ctx, scales: { x, y } } = c;
+                    c.data.datasets.forEach((ds, dsi) => {
+                        if (!ds.isPriceSeries) return;
+                        const meta = c.getDatasetMeta(dsi);
+                        const candleWidth = Math.max(8, Math.min(18, x.width / Math.max(20, c.data.labels.length * 1.8)));
+                        meta.data.forEach((pt, i) => {
+                            const source = globalStockData[ds.label]?.[i];
+                            if (!source) return;
+                            const openY = y.getPixelForValue(source.open);
+                            const closeY = y.getPixelForValue(source.close);
+                            const highY = y.getPixelForValue(source.high);
+                            const lowY = y.getPixelForValue(source.low);
+                            const rising = source.close >= source.open;
+                            const bodyTop = Math.min(openY, closeY);
+                            const bodyHeight = Math.max(2, Math.abs(closeY - openY));
+                            ctx.save();
+                            ctx.strokeStyle = rising ? '#10b981' : '#ef4444';
+                            ctx.fillStyle = rising ? '#dcfce7' : '#fee2e2';
+                            ctx.lineWidth = 2;
+                            ctx.beginPath();
+                            ctx.moveTo(pt.x, highY);
+                            ctx.lineTo(pt.x, lowY);
+                            ctx.stroke();
+                            ctx.fillRect(pt.x - candleWidth / 2, bodyTop, candleWidth, bodyHeight);
+                            ctx.strokeRect(pt.x - candleWidth / 2, bodyTop, candleWidth, bodyHeight);
+                            ctx.restore();
+                        });
+                    });
+                }
+            };
+
+            const guideLinePlugin = {
+                id: 'guideLines',
+                afterDatasetsDraw: (c) => {
+                    const visibleLines = guideLines.filter(line => line.mode === effectiveChartMode);
+                    if (visibleLines.length === 0) return;
+                    const { ctx, chartArea: { left, right }, scales: { y } } = c;
+                    visibleLines.forEach(line => {
+                        const yPos = y.getPixelForValue(line.value);
+                        if (!Number.isFinite(yPos)) return;
+                        ctx.save();
+                        ctx.strokeStyle = '#0f172a55';
+                        ctx.setLineDash([8, 6]);
+                        ctx.beginPath();
+                        ctx.moveTo(left, yPos);
+                        ctx.lineTo(right, yPos);
+                        ctx.stroke();
+                        ctx.setLineDash([]);
+                        ctx.fillStyle = '#0f172a';
+                        ctx.font = '900 10px Pretendard';
+                        ctx.textAlign = 'right';
+                        ctx.fillText(`${getGuideLineModeLabel(effectiveChartMode)} ${line.value}`, right - 8, yPos - 6);
+                        ctx.restore();
+                    });
+                }
+            };
+
             const numberingPlugin = {
                 id: 'numbering',
                 afterDatasetsDraw: (c) => {
                     const ctx = c.ctx;
                     c.data.datasets.forEach((ds, dsi) => {
+                        if (!ds.isPriceSeries) return;
                         const ticker = ds.label;
                         const meta = c.getDatasetMeta(dsi);
                         meta.data.forEach((pt, i) => {
@@ -570,15 +758,42 @@
                 }
             };
 
-            const datasets = compareTickers.map((t, idx) => ({
-                label: t, data: (globalStockData[t] || []).map(p => isMulti ? p.change_total : p.price), borderColor: COLORS[idx % COLORS.length], borderWidth: 4, tension: 0.1, fill: false, 
-                pointRadius: (globalStockData[t] || []).map(p => (allTickerData[t]?.events || []).some(e => e.date === p.date) ? 6 : 0),
-                pointBackgroundColor: (globalStockData[t] || []).map(p => { const ev = (allTickerData[t]?.events || []).find(e => e.date === p.date); return ev ? TYPE_COLORS[ev.type] : '#fff'; }),
-                pointBorderColor: '#fff'
-            }));
+            const datasets = compareTickers.flatMap((t, idx) => {
+                const priceDataset = {
+                    label: t,
+                    isPriceSeries: true,
+                    data: (globalStockData[t] || []).map(p => effectiveChartMode === 'candle' ? p.close : (isMulti ? p.change_total : p.price)),
+                    borderColor: COLORS[idx % COLORS.length],
+                    borderWidth: effectiveChartMode === 'candle' ? 0 : 4,
+                    tension: 0.1,
+                    fill: false,
+                    pointRadius: effectiveChartMode === 'candle' ? 0 : (globalStockData[t] || []).map(p => (allTickerData[t]?.events || []).some(e => e.date === p.date) ? 6 : 0),
+                    pointHoverRadius: effectiveChartMode === 'candle' ? 6 : undefined,
+                    pointBackgroundColor: (globalStockData[t] || []).map(p => { const ev = (allTickerData[t]?.events || []).find(e => e.date === p.date); return ev ? TYPE_COLORS[ev.type] : '#fff'; }),
+                    pointBorderColor: '#fff'
+                };
+                if (!showVolumeOverlayActive) return [priceDataset];
+                const volumeDataset = {
+                    label: `${t}-volume`,
+                    type: 'bar',
+                    isPriceSeries: false,
+                    yAxisID: 'yVolume',
+                    order: 10,
+                    data: (globalStockData[t] || []).map(p => p.volume || 0),
+                    backgroundColor: 'rgba(148, 163, 184, 0.28)',
+                    borderWidth: 0,
+                    barPercentage: 0.82,
+                    categoryPercentage: 0.92
+                };
+                return [priceDataset, volumeDataset];
+            });
+            const labels = (globalStockData[compareTickers[0]] || []).map(d => d.date);
+            const yValues = compareTickers.flatMap(t => (globalStockData[t] || []).flatMap(p => effectiveChartMode === 'candle' ? [p.low, p.high] : [isMulti ? Number(p.change_total) : p.price]));
+            const yMin = yValues.length ? Math.min(...yValues) : 0;
+            const yMax = yValues.length ? Math.max(...yValues) : 100;
 
             chart = new Chart(ctx, {
-                type: 'line', data: { labels: (globalStockData[compareTickers[0]] || []).map(d => d.date), datasets },
+                type: 'line', data: { labels, datasets },
                 options: {
                     responsive: true, maintainAspectRatio: false,
                     onHover: (e) => {
@@ -593,7 +808,8 @@
                         
                         if (points.length > 0) {
                             const idx = points[0].index;
-                            hoverPoint = nearestPoint[0] ? { datasetIndex: nearestPoint[0].datasetIndex, index: nearestPoint[0].index } : null;
+                            const nearestPricePoint = nearestPoint.find(point => chart.data.datasets[point.datasetIndex]?.isPriceSeries);
+                            hoverPoint = nearestPricePoint ? { datasetIndex: nearestPricePoint.datasetIndex, index: nearestPricePoint.index } : null;
                             const targetDate = chart.data.labels[idx];
                             
                             // Cursor Styling
@@ -619,10 +835,11 @@
                                             <span style="color:${color}">${t.replace(/\..*/,'')}</span>
                                         </div>
                                         <div class="text-right">
-                                            <div class="font-black text-white">${sym}${d.price.toLocaleString()}</div>
+                                            <div class="font-black text-white">${effectiveChartMode === 'candle' ? `O ${sym}${d.open.toLocaleString()} | H ${sym}${d.high.toLocaleString()} | L ${sym}${d.low.toLocaleString()} | C ${sym}${d.close.toLocaleString()}` : `${sym}${d.price.toLocaleString()}`}</div>
                                             <div class="text-[8px] font-bold ${d.diff_today >= 0 ? 'text-green-400' : 'text-red-400'}">
                                                 ${d.diff_today >= 0 ? '▲' : '▼'}${sym}${Math.abs(d.diff_today).toLocaleString()} (${d.change_today}%)
                                             </div>
+                                            ${showVolumeOverlayActive ? `<div class="text-[8px] font-bold text-slate-400 uppercase">Vol ${Number(d.volume || 0).toLocaleString()}</div>` : ''}
                                         </div>
                                     </div>`;
                             });
@@ -656,8 +873,12 @@
                         if (hit) focusEvent(hit.ticker, hit.date);
                     },
                     plugins: { legend: { display: false }, tooltip: { enabled: false } },
-                    scales: { x: { display: false }, y: { ticks: { font: { weight: 'bold' } }, grid: { color: '#f1f5f9' } } }
-                }, plugins: [alertLinePlugin, hoverPlugin, numberingPlugin]
+                    scales: {
+                        x: { display: false },
+                        y: { min: yMin - ((yMax - yMin || 1) * 0.05), max: yMax + ((yMax - yMin || 1) * 0.05), ticks: { font: { weight: 'bold' } }, grid: { color: '#f1f5f9' } },
+                        yVolume: { display: false, position: 'right', beginAtZero: true, grid: { display: false } }
+                    }
+                }, plugins: [alertLinePlugin, guideLinePlugin, candlePlugin, hoverPlugin, numberingPlugin]
             });
         }
 
