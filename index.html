@@ -1,0 +1,628 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Financial Timeline OS V39 (Intelligence Master)</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html-to-image/1.11.11/html-to-image.min.js"></script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Pretendard:wght@400;700;900&display=swap');
+        body { font-family: 'Pretendard', sans-serif; letter-spacing: -0.02em; background-color: #f1f5f9; scroll-behavior: smooth; }
+        .report-canvas { width: 1080px; min-height: 1600px; background: white; padding: 60px; position: relative; }
+        .loading-overlay { display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(255,255,255,0.95); z-index:9999; justify-content:center; align-items:center; flex-direction:column; }
+        .custom-scroll::-webkit-scrollbar { width: 4px; }
+        .custom-scroll::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 10px; }
+        
+        @keyframes highlight-card {
+            0% { border-color: #2563eb; transform: scale(1); }
+            50% { border-color: #3b82f6; transform: scale(1.03); box-shadow: 0 0 30px rgba(37,99,235,0.3); }
+            100% { border-color: #e2e8f0; transform: scale(1); }
+        }
+        .focused-card { animation: highlight-card 1.5s ease-in-out 2; border-width: 3px !important; z-index: 20; }
+        .benchmark-btn { padding: 5px; background: white; border: 1px solid #e2e8f0; border-radius: 6px; font-size: 8px; font-weight: 900; color: #64748b; text-transform: uppercase; transition: all 0.2s; position: relative; }
+        .benchmark-btn:hover { border-color: #2563eb; color: #2563eb; background: #eff6ff; }
+        .benchmark-del { position: absolute; top: -5px; right: -5px; background: #ef4444; color: white; width: 12px; height: 12px; border-radius: 50%; display: none; align-items: center; justify-content: center; font-size: 8px; }
+        .benchmark-btn:hover .benchmark-del { display: flex; }
+
+        .benchmark-btn:hover { border-color: #2563eb; color: #2563eb; background: #eff6ff; transform: translateY(-1px); }
+        
+        #intelTooltip { position: absolute; pointer-events: none; display: none; z-index: 1000; background: rgba(15, 23, 42, 0.95); color: white; padding: 16px; border-radius: 16px; box-shadow: 0 20px 40px rgba(0,0,0,0.4); min-width: 300px; backdrop-filter: blur(8px); border: 1px solid rgba(255,255,255,0.1); }
+        .pop-item { border-bottom: 1px solid rgba(255,255,255,0.1); padding: 8px 0; }
+        .pop-item:last-child { border-bottom: none; }
+        .section-header { cursor: pointer; user-select: none; }
+    </style>
+</head>
+<body class="p-4 lg:p-6 text-slate-900">
+
+    <div id="loading" class="loading-overlay">
+        <div class="animate-spin rounded-full h-16 w-16 border-t-4 border-b-4 border-blue-700 mb-4"></div>
+        <div id="loadingText" class="font-black text-blue-700 uppercase text-xs">Deploying Master Intel OS V39...</div>
+    </div>
+
+    <!-- 고성능 통합 인텔 툴팁 -->
+    <div id="intelTooltip">
+        <div class="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] mb-3 flex justify-between border-b border-white/10 pb-2">
+            <span id="ttDate">DATE</span>
+            <span class="text-blue-400">INTELLIGENCE UNIT</span>
+        </div>
+        <div id="ttPrices" class="space-y-2 mb-3"></div>
+        <div id="ttEvents" class="pt-2 border-t border-white/10 space-y-1 hidden">
+            <div class="text-[9px] font-black text-amber-400 uppercase mb-2 italic">Critical Events</div>
+            <div id="ttEventList" class="space-y-2"></div>
+        </div>
+    </div>
+
+    <div class="max-w-[2400px] mx-auto flex flex-col xl:flex-row gap-6">
+        
+        <!-- 1. 좌측 컨트롤러 (Dual-Hub) -->
+        <div class="w-full xl:w-[420px] space-y-5 h-fit sticky top-6 transition-all">
+            
+            <div class="bg-white p-6 rounded-[2.5rem] shadow-xl border border-slate-200">
+                <div class="flex items-center justify-between mb-4">
+                    <div class="flex items-center gap-2">
+                        <div class="w-3 h-8 bg-blue-700 rounded-full"></div>
+                        <h2 class="text-2xl font-black italic tracking-tighter uppercase leading-none">OS V39</h2>
+                    </div>
+                    <div class="flex gap-1">
+                        <button onclick="exportBackup()" class="px-3 py-1.5 bg-slate-800 text-white rounded-lg text-[10px] font-black uppercase">Backup</button>
+                        <button onclick="resetWorkspace()" class="px-3 py-1.5 bg-red-500 text-white rounded-lg text-[10px] font-black uppercase hover:bg-red-600">Reset</button>
+                    </div>
+                </div>
+                <label class="block w-full text-center px-4 py-2 bg-slate-100 text-slate-500 rounded-xl text-[10px] font-black cursor-pointer hover:bg-slate-200 uppercase italic">
+                    Import DB <input type="file" class="hidden" onchange="importBackup(event)">
+                </label>
+            </div>
+
+            <!-- Comparison Hub -->
+            <div class="bg-white p-6 rounded-[2.5rem] shadow-xl border border-slate-200 overflow-hidden">
+                <div class="section-header flex justify-between items-center mb-4" onclick="toggleSection('comparison-hub')">
+                    <h3 class="text-xs font-black tracking-widest uppercase italic text-slate-400">Comparison Hub</h3>
+                    <span id="comparison-hub-icon" class="text-[10px] text-slate-300">▲</span>
+                </div>
+                <div id="comparison-hub" class="space-y-4">
+                    <div class="space-y-4 p-5 bg-slate-50 rounded-[2rem] border border-slate-100 shadow-inner">
+                        <input id="tickerName" type="text" placeholder="종목/검색어" class="w-full p-3 rounded-xl border-2 border-white shadow-sm font-bold text-sm outline-none focus:border-blue-500 transition-all text-center">
+                        <div class="flex gap-2">
+                            <input id="tickerCodeInput" type="text" placeholder="TICKER" class="w-1/3 bg-white border-2 border-white shadow-sm rounded-xl text-center font-black text-slate-900 uppercase tracking-tighter text-xs outline-none focus:border-blue-500">
+                            <button onclick="webMapTickerReport()" class="flex-1 bg-slate-900 text-white rounded-xl font-black text-xs hover:bg-black italic">SEARCH</button>
+                            <button onclick="addToComparison()" class="bg-blue-600 text-white px-4 rounded-xl font-black text-xs hover:bg-blue-700 shadow-md transition-all">+ COMPARE</button>
+                        </div>
+                        <div id="priceStatus" class="mt-1 text-[10px] font-black text-blue-600 flex justify-between px-1"><span>LIVE: -</span><span id="syncTime" class="text-slate-400 font-bold uppercase tracking-tighter">READY</span></div>
+                        <div class="pt-2 border-t border-slate-200">
+                            <div class="flex justify-between items-center mb-2">
+                                <span class="text-[9px] font-black text-slate-400 uppercase tracking-widest">Global Benchmarks</span>
+                                <button onclick="addNewBenchmark()" class="text-[9px] font-bold text-blue-500 hover:underline">+ New</button>
+                            </div>
+                            <div id="benchmarkContainer" class="grid grid-cols-4 gap-1"></div>
+                        </div>
+                    </div>
+                    <div id="comparisonTags" class="flex flex-wrap gap-2 min-h-[10px]"></div>
+                </div>
+            </div>
+
+            <!-- Volatility Alert Hub -->
+            <div class="bg-white p-6 rounded-[2.5rem] shadow-xl border border-slate-200 overflow-hidden">
+                <div class="section-header flex justify-between items-center mb-4" onclick="toggleSection('alert-hub')">
+                    <h3 class="text-xs font-black tracking-widest uppercase italic text-slate-400">Volatility Alert Hub</h3>
+                    <span id="alert-hub-icon" class="text-[10px] text-slate-300">▲</span>
+                </div>
+                <div id="alert-hub" class="space-y-4">
+                    <div class="flex items-center justify-between bg-blue-50 p-4 rounded-2xl border border-blue-100">
+                        <span class="text-[10px] font-black text-blue-800 uppercase italic">Master Alert Filter</span>
+                        <label class="relative inline-flex items-center cursor-pointer">
+                            <input type="checkbox" id="showVolAlert" onchange="chart.draw()" class="sr-only peer">
+                            <div class="w-9 h-5 bg-slate-200 rounded-full peer peer-checked:bg-blue-600 after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:after:translate-x-full"></div>
+                        </label>
+                    </div>
+                    <div id="alertConfigList" class="space-y-2 max-h-[250px] overflow-y-auto custom-scroll pr-1"></div>
+                </div>
+            </div>
+
+            <!-- Range & Sync -->
+            <div class="bg-white p-6 rounded-[2.5rem] shadow-xl border border-slate-200">
+                <div class="grid grid-cols-2 gap-3 text-[10px] font-black text-slate-400 uppercase tracking-widest mb-4">
+                    <div>Start Date<input id="startDate" type="date" class="w-full border-b-2 p-1 font-bold bg-transparent outline-none focus:border-blue-500"></div>
+                    <div>End Date<input id="endDate" type="date" class="w-full border-b-2 p-1 font-bold bg-transparent outline-none focus:border-blue-500"></div>
+                </div>
+                <button onclick="buildTimeline()" class="w-full bg-slate-100 text-slate-400 py-4 rounded-2xl font-black hover:bg-blue-50 hover:text-blue-600 transition-all uppercase text-xs tracking-widest italic">Manual Force Sync</button>
+            </div>
+
+            <!-- Logger -->
+            <div class="bg-white p-6 rounded-[2.5rem] shadow-xl border border-slate-200 overflow-hidden">
+                <div class="section-header flex justify-between items-center mb-4" onclick="toggleSection('logger-hub')">
+                    <h3 class="text-xs font-black tracking-widest uppercase italic text-slate-400">Insight Logger</h3>
+                    <span id="logger-hub-icon" class="text-[10px] text-slate-300">▲</span>
+                </div>
+                <div id="logger-hub" class="space-y-4">
+                    <select id="eventTargetTicker" class="w-full text-[10px] font-black bg-slate-50 p-3 rounded-xl border-none cursor-pointer outline-none"></select>
+                    <div class="flex gap-1 p-1 bg-slate-100 rounded-xl">
+                        <div class="flex-1"><input type="radio" name="eventType" id="typeDefault" value="def" class="hidden" checked><label for="typeDefault" class="block text-center py-2 text-[10px] font-black rounded-lg cursor-pointer transition-all">기본</label></div>
+                        <div class="flex-1"><input type="radio" name="eventType" id="typePos" value="pos" class="hidden"><label for="typePos" class="block text-center py-2 text-[10px] font-black rounded-lg cursor-pointer transition-all">호재</label></div>
+                        <div class="flex-1"><input type="radio" name="eventType" id="typeNeg" value="neg" class="hidden"><label for="typeNeg" class="block text-center py-2 text-[10px] font-black rounded-lg cursor-pointer transition-all">악재</label></div>
+                    </div>
+                    <input id="eventDate" type="date" class="w-full border p-3 rounded-xl text-xs font-bold outline-none">
+                    <input id="eventTitle" type="text" placeholder="사건 제목" class="w-full border p-3 rounded-xl text-xs font-black outline-none">
+                    <textarea id="eventDesc" rows="2" placeholder="분석 기록" class="w-full border p-3 rounded-xl text-xs resize-none font-medium outline-none"></textarea>
+                    <button onclick="addEvent()" class="w-full bg-slate-900 text-white py-3 rounded-xl font-black text-xs hover:bg-black transition-all shadow-md">+ Add Insight</button>
+                </div>
+            </div>
+
+            <button onclick="saveAsImage()" class="w-full bg-white border-2 border-slate-200 text-slate-400 py-4 rounded-2xl text-[10px] font-black hover:bg-slate-50 uppercase shadow-sm transition-all italic tracking-widest">Export Combined PNG Report</button>
+        </div>
+
+        <!-- 2. 중앙 캔버스 -->
+        <div class="flex-1 flex justify-center bg-white p-8 rounded-[3.5rem] shadow-inner h-fit border border-slate-200 overflow-auto">
+            <div id="captureArea" class="report-canvas">
+                <div class="mb-12 border-b-[10px] border-slate-900 pb-8">
+                    <div class="flex justify-between items-end">
+                        <div>
+                            <div class="inline-block px-3 py-1 bg-slate-900 text-white text-[10px] font-black rounded-sm mb-4 uppercase italic tracking-tighter">Master Intelligence & Multi-Hub Report</div>
+                            <h1 class="text-6xl font-black text-slate-900 italic uppercase leading-none tracking-tighter">FINANCIAL LOG</h1>
+                            <div id="outSub" class="flex flex-wrap gap-4 mt-6"></div>
+                        </div>
+                        <div class="text-right font-mono"><span id="outPeriod" class="text-base text-slate-400 font-black uppercase tracking-widest">----.--.--</span></div>
+                    </div>
+                </div>
+                <div id="chartContainer" class="relative h-[550px] mb-20 scroll-mt-20"><canvas id="mainChart"></canvas></div>
+                <div id="eventGrid" class="grid grid-cols-2 gap-8"></div>
+                <div class="absolute bottom-10 left-[60px] right-[60px] flex justify-between items-center text-[10px] text-slate-300 font-bold tracking-[0.4em] border-t pt-8 uppercase">
+                    <span>Research Desk OS Core Framework V39</span>
+                    <span id="timeStamp">System Ready</span>
+                </div>
+            </div>
+        </div>
+
+        <!-- 3. 우측 데이터베이스 -->
+        <div class="w-full xl:w-[400px] space-y-6 sticky top-6 h-fit font-bold transition-all">
+            <div class="bg-blue-600 p-6 rounded-[2.5rem] shadow-xl text-white">
+                <div class="section-header flex justify-between items-center mb-4" onclick="toggleSection('set-section')">
+                    <h3 class="text-xs font-black tracking-widest uppercase italic">Snapshots</h3>
+                    <span id="set-section-icon" class="text-[10px] opacity-50">▲</span>
+                </div>
+                <div id="set-section" class="space-y-2 max-h-[250px] overflow-y-auto custom-scroll pr-1"></div>
+                <button onclick="saveCombinedSet()" class="w-full mt-3 bg-white/20 text-white py-2 rounded-xl font-black text-[10px] hover:bg-white/30 uppercase tracking-widest italic transition-all">💾 Snapshot Current Hub</button>
+            </div>
+
+            <div class="bg-white p-6 rounded-[2.5rem] shadow-xl border border-slate-200">
+                <div class="section-header flex justify-between items-center mb-4" onclick="toggleSection('db-section')">
+                    <h3 class="text-xs font-black tracking-widest uppercase italic text-slate-400">Asset Database</h3>
+                    <span id="db-section-icon" class="text-[10px] text-slate-200">▲</span>
+                </div>
+                <div id="db-section">
+                    <div id="historyList" class="space-y-2 max-h-[300px] overflow-y-auto custom-scroll pr-1 text-xs"></div>
+                </div>
+            </div>
+
+            <div class="bg-slate-900 p-6 rounded-[2.5rem] shadow-xl text-white">
+                <div class="section-header flex justify-between items-center mb-4" onclick="toggleSection('feed-section')">
+                    <h3 class="text-xs font-black tracking-widest uppercase text-slate-400 font-mono text-center">Global Event Feed</h3>
+                    <span id="feed-section-icon" class="text-[10px] text-slate-600">▲</span>
+                </div>
+                <div id="feed-section">
+                    <input id="feedSearch" oninput="renderGlobalEvents()" placeholder="Integrated Search..." class="w-full bg-slate-800 border-none p-3 rounded-xl text-[10px] font-medium outline-none focus:ring-1 ring-blue-500 mb-4">
+                    <div id="globalEventList" class="space-y-3 max-h-[400px] overflow-y-auto custom-scroll pr-1 text-[11px]"></div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const CF_WORKER_BASE = "https://api-research-desk-os.supreme6922.workers.dev";
+        const COLORS = ['#2563eb', '#10b981', '#f59e0b', '#7c3aed', '#db2777', '#dc2626', '#14b8a6', '#f43f5e'];
+        const TYPE_COLORS = { def: '#94a3b8', pos: '#10b981', neg: '#ef4444' };
+        const TYPE_LABELS = { def: '기본', pos: '호재', neg: '악재' };
+        
+        let chart, compareTickers = [], alertTickers = {}, globalStockData = {}, activeHighlight = null;
+        let allTickerData = JSON.parse(localStorage.getItem('rd_v39_db')) || {};
+        let savedCombinedSets = JSON.parse(localStorage.getItem('rd_v39_combined')) || [];
+        const DEFAULT_BENCHMARKS = [
+            {t:'^KS11', n:'KOSPI'}, {t:'^GSPC', n:'S&P500'}, {t:'^IXIC', n:'NASDAQ'}, {t:'^KQ11', n:'KOSDAQ'},
+            {t:'DX-Y.NYB', n:'DXY'}, {t:'KRW=X', n:'USD/KRW'}, {t:'^TNX', n:'US10Y'}, {t:'KTB3Y.KS', n:'KR3Y'},
+            {t:'GC=F', n:'GOLD'}, {t:'SI=F', n:'SILVER'}, {t:'BTC-USD', n:'BTC'}, {t:'ETH-USD', n:'ETH'}
+        ];
+        let benchmarkList = JSON.parse(localStorage.getItem('rd_v39_bench')) || DEFAULT_BENCHMARKS;
+        let flagHitAreas = [];
+
+        function init() {
+            const today = new Date();
+            const lastYear = new Date(); lastYear.setDate(today.getDate() - 364);
+            const fmt = (d) => d.toISOString().split('T')[0];
+            document.getElementById('endDate').value = fmt(today);
+            document.getElementById('startDate').value = fmt(lastYear);
+            document.getElementById('eventDate').value = fmt(today);
+            renderBenchmarks(); renderHistoryList(); renderGlobalEvents(); renderCombinedList();
+        }
+
+        function resetWorkspace() {
+            if(!confirm("Reset current hub? DB will remain.")) return;
+            compareTickers = []; alertTickers = {}; globalStockData = {};
+            if(chart) chart.destroy(); chart = null;
+            document.getElementById('outSub').innerHTML = '';
+            document.getElementById('outPeriod').innerText = '----.--.--';
+            document.getElementById('eventGrid').innerHTML = '';
+            updateHubUI();
+        }
+
+        // --- Dual-Hub Controller ---
+        async function webMapTickerReport(customQ = null) {
+            const nameEl = document.getElementById('tickerName');
+            const codeInputEl = document.getElementById('tickerCodeInput');
+            let qRaw = customQ || nameEl.value.trim() || codeInputEl.value.trim();
+            if (!qRaw) return;
+            document.getElementById('loading').style.display = 'flex';
+            try {
+                const res = await fetch(`${CF_WORKER_BASE}/search?q=${encodeURIComponent(qRaw)}`, { cache: "no-store" });
+                const data = await res.json();
+                if (!data?.quotes?.length) { alert("Not Found"); return; }
+                let best = data.quotes.find(qt => qt.symbol?.endsWith('.KS') || qt.symbol?.endsWith('.KQ')) || data.quotes[0];
+                codeInputEl.value = best.symbol;
+                nameEl.value = best.shortname || best.longname || qRaw;
+                fetchQuote(best.symbol);
+            } catch (err) { }
+            finally { document.getElementById('loading').style.display = 'none'; }
+        }
+
+        async function fetchQuote(ticker) {
+            try {
+                const res = await fetch(`${CF_WORKER_BASE}/quote?ticker=${ticker}`);
+                const data = await res.json();
+                const symbol = ticker.includes('.KS') || ticker.includes('.KQ') || ticker.includes('KRW') ? '₩' : '$';
+                document.getElementById('priceStatus').innerHTML = `<span>LIVE: ${symbol}${data.price.toLocaleString()}</span> <span class="text-slate-400 font-bold uppercase">${new Date(data.time).toLocaleTimeString()}</span>`;
+            } catch (e) {}
+        }
+
+        function addToComparison(manualTicker = null, manualName = null) {
+            let ticker = manualTicker || document.getElementById('tickerCodeInput').value.trim();
+            if (!ticker) return;
+            if (/^\d{6}$/.test(ticker)) ticker += ".KS";
+            if (compareTickers.includes(ticker)) return;
+            compareTickers.push(ticker);
+            const company = manualName || document.getElementById('tickerName').value || ticker;
+            if (!allTickerData[ticker]) allTickerData[ticker] = { company, events: [], lastUpdate: new Date().toISOString() };
+            updateHubUI(); buildTimeline();
+        }
+
+        function removeFromComparison(ticker) {
+            compareTickers = compareTickers.filter(t => t !== ticker); delete alertTickers[ticker];
+            updateHubUI(); if(compareTickers.length > 0) buildTimeline(); else { if(chart) chart.destroy(); chart = null; document.getElementById('eventGrid').innerHTML = ''; }
+        }
+
+        function toggleAlertSubscription(ticker) {
+            if (alertTickers[ticker]) delete alertTickers[ticker]; else alertTickers[ticker] = { threshold: -3 };
+            updateHubUI(); if(chart) chart.draw();
+        }
+
+        function updateThreshold(ticker, val) { if (alertTickers[ticker]) { alertTickers[ticker].threshold = parseFloat(val); chart.draw(); } }
+
+        function updateHubUI() {
+            const tagContainer = document.getElementById('comparisonTags');
+            const alertList = document.getElementById('alertConfigList');
+            const eventTarget = document.getElementById('eventTargetTicker');
+            tagContainer.innerHTML = ''; alertList.innerHTML = ''; eventTarget.innerHTML = '';
+            
+            compareTickers.forEach((ticker, idx) => {
+                const color = COLORS[idx % COLORS.length];
+                const isAlerting = !!alertTickers[ticker];
+                tagContainer.innerHTML += `<span class="px-3 py-1.5 rounded-full text-[10px] font-black text-white shadow-sm flex items-center gap-2" style="background:${color}">${ticker.replace(/\.KS|\.KQ/,'')}<button onclick="removeFromComparison('${ticker}')">×</button></span>`;
+                alertList.innerHTML += `
+                    <div class="flex items-center gap-3 p-3 rounded-2xl border transition-all ${isAlerting ? 'bg-white border-blue-200 shadow-sm' : 'bg-slate-50 border-slate-100 opacity-60'}">
+                        <div class="w-2 h-2 rounded-full" style="background:${color}"></div>
+                        <div class="flex-1 text-[10px] font-black truncate">${ticker}</div>
+                        <div class="flex items-center gap-2">
+                            <button onclick="toggleAlertSubscription('${ticker}')" class="text-base transition-all ${isAlerting ? 'grayscale-0' : 'grayscale text-slate-300'}">🔔</button>
+                            <input type="number" step="0.5" value="${isAlerting ? alertTickers[ticker].threshold : -3}" onchange="updateThreshold('${ticker}', this.value)" class="w-12 text-center text-[10px] font-black bg-slate-100 border-none rounded p-1 outline-none text-red-500" ${!isAlerting ? 'disabled' : ''}>
+                        </div>
+                    </div>`;
+                eventTarget.innerHTML += `<option value="${ticker}">${ticker}</option>`;
+            });
+        }
+
+        // --- Intelligent Chart Engine ---
+        async function buildTimeline() {
+            const start = document.getElementById('startDate').value;
+            const end = document.getElementById('endDate').value;
+            if (compareTickers.length === 0) return;
+            document.getElementById('loading').style.display = 'flex';
+            globalStockData = {};
+            try {
+                await Promise.all(compareTickers.map(async (ticker) => {
+                    const res = await fetch(`${CF_WORKER_BASE}/history?ticker=${ticker}&start=${start}&end=${end}`);
+                    const data = await res.json();
+                    if (data.history) {
+                        globalStockData[ticker] = data.history.map((d, i) => {
+                            const prevClose = i === 0 ? d.price : data.history[i-1].price;
+                            const diff = d.price - prevClose;
+                            return { 
+                                date: d.date, 
+                                price: d.price, 
+                                diff_today: diff,
+                                change_today: ((diff / prevClose) * 100).toFixed(2), 
+                                change_total: i === 0 ? 0 : ((d.price - data.history[0].price) / data.history[0].price * 100).toFixed(2) 
+                            };
+                        });
+                    }
+                }));
+                document.getElementById('outPeriod').innerText = `${start.replace(/-/g,'.')} - ${end.replace(/-/g,'.')}`;
+                const outSub = document.getElementById('outSub'); outSub.innerHTML = '';
+                compareTickers.forEach((t, i) => {
+                    outSub.innerHTML += `<div class="flex items-center gap-2 font-black text-[11px]" style="color:${COLORS[i % COLORS.length]}"><span>${t}</span><span class="text-slate-300">|</span><span class="text-slate-400 font-bold uppercase">${allTickerData[t]?.company || t}</span></div>`;
+                });
+                renderChart(); refreshEventUI(); renderHistoryList(); renderGlobalEvents();
+            } catch (e) { }
+            finally { document.getElementById('loading').style.display = 'none'; }
+        }
+
+        function renderChart() {
+            const ctx = document.getElementById('mainChart').getContext('2d');
+            if (chart) chart.destroy();
+            const isMulti = compareTickers.length > 1;
+            const merged = getSortedMergedEvents();
+            flagHitAreas = [];
+
+            const numberingPlugin = {
+                id: 'numbering',
+                afterDatasetsDraw: (c) => {
+                    const ctx = c.ctx;
+                    c.data.datasets.forEach((ds, dsi) => {
+                        const ticker = ds.label;
+                        const meta = c.getDatasetMeta(dsi);
+                        meta.data.forEach((pt, i) => {
+                            const date = c.data.labels[i];
+                            const evsOnDate = merged.filter(e => e.date === date && e.ticker === ticker);
+                            evsOnDate.forEach((ev, ei) => {
+                                const gi = merged.indexOf(ev); const yo = 25 + (ei * 25);
+                                ctx.save();
+                                if(activeHighlight && activeHighlight.ticker === ticker && activeHighlight.date === date) {
+                                    ctx.beginPath(); ctx.strokeStyle='#2563eb'; ctx.lineWidth=3; ctx.arc(pt.x, pt.y, 15, 0, Math.PI*2); ctx.stroke();
+                                }
+                                ctx.fillStyle = TYPE_COLORS[ev.type]; ctx.beginPath(); ctx.arc(pt.x, pt.y - yo, 10, 0, Math.PI * 2); ctx.fill();
+                                ctx.fillStyle='white'; ctx.font='bold 10px Pretendard'; ctx.textAlign='center'; ctx.textBaseline='middle'; ctx.fillText(gi+1, pt.x, pt.y - yo);
+                                ctx.beginPath(); ctx.moveTo(pt.x, pt.y-(yo-10)); ctx.lineTo(pt.x, pt.y-5); ctx.strokeStyle=TYPE_COLORS[ev.type]; ctx.stroke();
+                                flagHitAreas.push({ x: pt.x, y: pt.y - yo, radius: 12, ticker, date });
+                                ctx.restore();
+                            });
+                        });
+                    });
+                }
+            };
+
+            const alertLinePlugin = {
+                id: 'alertLines',
+                beforeDraw: (c) => {
+                    if (!document.getElementById('showVolAlert').checked) return;
+                    const { ctx, chartArea: { top, bottom }, scales: { x } } = c;
+                    Object.keys(alertTickers).forEach(ticker => {
+                        const config = alertTickers[ticker];
+                        const data = globalStockData[ticker];
+                        if (!data) return;
+                        data.forEach(d => {
+                            if (parseFloat(d.change_today) <= config.threshold) {
+                                const xPos = x.getPixelForValue(d.date);
+                                ctx.save(); ctx.beginPath(); ctx.setLineDash([4, 4]); ctx.lineWidth = 1; ctx.strokeStyle = COLORS[compareTickers.indexOf(ticker) % COLORS.length] + '55';
+                                ctx.moveTo(xPos, top); ctx.lineTo(xPos, bottom); ctx.stroke(); ctx.restore();
+                            }
+                        });
+                    });
+                }
+            };
+
+            const datasets = compareTickers.map((t, idx) => ({
+                label: t, data: (globalStockData[t] || []).map(p => isMulti ? p.change_total : p.price), borderColor: COLORS[idx % COLORS.length], borderWidth: 4, tension: 0.1, fill: false, 
+                pointRadius: (globalStockData[t] || []).map(p => (allTickerData[t]?.events || []).some(e => e.date === p.date) ? 6 : 0),
+                pointBackgroundColor: (globalStockData[t] || []).map(p => { const ev = (allTickerData[t]?.events || []).find(e => e.date === p.date); return ev ? TYPE_COLORS[ev.type] : '#fff'; }),
+                pointBorderColor: '#fff'
+            }));
+
+            chart = new Chart(ctx, {
+                type: 'line', data: { labels: (globalStockData[compareTickers[0]] || []).map(d => d.date), datasets },
+                options: {
+                    responsive: true, maintainAspectRatio: false,
+                    onHover: (e) => {
+                        const rect = e.chart.canvas.getBoundingClientRect();
+                        const xPos = e.native.clientX - rect.left;
+                        const yPos = e.native.clientY - rect.top;
+                        
+                        // Find index by X position
+                        const points = chart.getElementsAtEventForMode(e.native, 'index', { intersect: false }, true);
+                        const tip = document.getElementById('intelTooltip');
+                        
+                        if (points.length > 0) {
+                            const idx = points[0].index;
+                            const targetDate = chart.data.labels[idx];
+                            
+                            // Cursor Styling
+                            const isOverFlag = flagHitAreas.some(f => Math.sqrt((xPos - f.x)**2 + (yPos - f.y)**2) < f.radius);
+                            e.native.target.style.cursor = isOverFlag ? 'pointer' : 'default';
+
+                            // Show Unified Tooltip
+                            tip.style.display = 'block';
+                            tip.style.left = (e.native.clientX + 20) + 'px';
+                            tip.style.top = (e.native.clientY - 20) + 'px';
+                            document.getElementById('ttDate').innerText = targetDate;
+
+                            // Fill Prices
+                            const priceList = document.getElementById('ttPrices'); priceList.innerHTML = '';
+                            compareTickers.forEach((t, i) => {
+                                const d = globalStockData[t][idx];
+                                const sym = t.includes('.KS') || t.includes('.KQ') || t.includes('KRW') ? '₩' : '$';
+                                const color = COLORS[i % COLORS.length];
+                                priceList.innerHTML += `
+                                    <div class="flex justify-between items-center text-[10px]">
+                                        <div class="flex items-center gap-1.5 font-black">
+                                            <div class="w-1.5 h-1.5 rounded-full" style="background:${color}"></div>
+                                            <span style="color:${color}">${t.replace(/\..*/,'')}</span>
+                                        </div>
+                                        <div class="text-right">
+                                            <div class="font-black text-white">${sym}${d.price.toLocaleString()}</div>
+                                            <div class="text-[8px] font-bold ${d.diff_today >= 0 ? 'text-green-400' : 'text-red-400'}">
+                                                ${d.diff_today >= 0 ? '▲' : '▼'}${sym}${Math.abs(d.diff_today).toLocaleString()} (${d.change_today}%)
+                                            </div>
+                                        </div>
+                                    </div>`;
+                            });
+
+                            // Fill Events
+                            const dayEvents = merged.filter(ev => ev.date === targetDate);
+                            const evSec = document.getElementById('ttEvents');
+                            if (dayEvents.length > 0) {
+                                evSec.classList.remove('hidden');
+                                const evList = document.getElementById('ttEventList'); evList.innerHTML = '';
+                                dayEvents.forEach(ev => {
+                                    const gi = merged.indexOf(ev) + 1;
+                                    evList.innerHTML += `
+                                        <div class="pop-item">
+                                            <div class="flex items-center gap-2 mb-1">
+                                                <span class="w-4 h-4 flex items-center justify-center bg-white text-slate-900 rounded-full text-[8px] font-black">${gi}</span>
+                                                <span class="text-[8px] font-black px-2 py-0.5 rounded-full" style="background:${TYPE_COLORS[ev.type]}">${TYPE_LABELS[ev.type]}</span>
+                                                <span class="text-[8px] text-white/40 font-bold uppercase">${ev.ticker}</span>
+                                            </div>
+                                            <div class="text-[11px] font-black text-slate-100">${ev.title}</div>
+                                        </div>`;
+                                });
+                            } else { evSec.classList.add('hidden'); }
+
+                        } else { tip.style.display = 'none'; }
+                    },
+                    onClick: (e) => {
+                        const rect = e.chart.canvas.getBoundingClientRect();
+                        const hit = flagHitAreas.find(f => Math.sqrt((e.native.clientX - rect.left - f.x)**2 + (e.native.clientY - rect.top - f.y)**2) < f.radius);
+                        if (hit) focusEvent(hit.ticker, hit.date);
+                    },
+                    plugins: { legend: { display: false }, tooltip: { enabled: false } },
+                    scales: { x: { display: false }, y: { ticks: { font: { weight: 'bold' } }, grid: { color: '#f1f5f9' } } }
+                }, plugins: [alertLinePlugin, numberingPlugin]
+            });
+        }
+
+        // --- Data Processor ---
+        function addEvent() {
+            const t = document.getElementById('eventTargetTicker').value;
+            const d = document.getElementById('eventDate').value;
+            const title = document.getElementById('eventTitle').value;
+            const desc = document.getElementById('eventDesc').value;
+            const type = document.querySelector('input[name="eventType"]:checked').value;
+            const pts = globalStockData[t];
+            if (!pts) return alert("Sync First");
+            const idx = pts.findIndex(p => p.date === d);
+            if (idx === -1) return alert("Day Locked (Closed)");
+            
+            const cur = pts[idx];
+            allTickerData[t].events.push({ 
+                date: d, title, desc, type, 
+                diff: cur.diff_today, 
+                pct: cur.change_today, 
+                priceAt: cur.price 
+            });
+            allTickerData[t].lastUpdate = new Date().toISOString();
+            saveData(); refreshEventUI(); renderChart(); renderGlobalEvents(); renderHistoryList();
+        }
+
+        function focusEvent(t, d) {
+            const id = `card-${t}-${d}`; const el = document.getElementById(id);
+            if (el) { el.scrollIntoView({ behavior: 'smooth', block: 'center' }); document.querySelectorAll('.focused-card').forEach(c => c.classList.remove('focused-card')); el.classList.add('focused-card'); activeHighlight = { ticker: t, date: d }; chart.draw(); setTimeout(() => { el.classList.remove('focused-card'); activeHighlight = null; chart.draw(); }, 3000); }
+        }
+
+        function removeEvent(t, d) { if(confirm("Del?")) { allTickerData[t].events = allTickerData[t].events.filter(e => e.date !== d); saveData(); refreshEventUI(); renderChart(); } }
+        function toggleSection(id) { const sec = document.getElementById(id); const isHidden = sec.classList.toggle('hidden'); document.getElementById(id+'-icon').innerText = isHidden ? '▼' : '▲'; }
+        function getSortedMergedEvents() { let m = []; compareTickers.forEach(t => { if(allTickerData[t]) allTickerData[t].events.forEach(e => m.push({ ...e, ticker: t })); }); return m.sort((a,b) => new Date(a.date) - new Date(b.date)); }
+        function saveData() { localStorage.setItem('rd_v39_db', JSON.stringify(allTickerData)); }
+        
+        function renderHistoryList() {
+            const list = document.getElementById('historyList'); list.innerHTML = '';
+            const keys = Object.keys(allTickerData).filter(t => !t.startsWith('^') && allTickerData[t].events.length > 0);
+            if(keys.length === 0) { list.innerHTML = '<p class="text-[10px] text-slate-400 font-bold italic uppercase">DB Empty.</p>'; return; }
+            keys.forEach(t => {
+                const info = allTickerData[t];
+                const item = document.createElement('div'); item.className = "p-3 bg-white border border-slate-100 rounded-xl shadow-sm mb-1 cursor-pointer hover:border-blue-500 transition-all";
+                item.onclick = () => { if(!compareTickers.includes(t)) addToComparison(t, info.company); };
+                item.innerHTML = `<div class="flex justify-between font-black text-slate-800"><span>${info.company}</span><span class="text-[8px] bg-slate-900 text-white px-1 rounded">${t}</span></div><div class="text-[8px] text-slate-400 font-bold uppercase">${info.events.length} Events | ${new Date(info.lastUpdate).toLocaleDateString()}</div>`;
+                list.appendChild(item);
+            });
+        }
+
+        function renderGlobalEvents() {
+            const list = document.getElementById('globalEventList'); list.innerHTML = '';
+            let items = []; Object.keys(allTickerData).forEach(t => allTickerData[t].events.forEach(e => items.push({...e, ticker: t})));
+            items.sort((a,b) => new Date(b.date) - new Date(a.date)).reverse().forEach(ev => {
+                const node = document.createElement('div'); node.className = "p-3 bg-slate-800 rounded-xl border-l-4 mb-2 cursor-pointer";
+                node.style.borderLeftColor = TYPE_COLORS[ev.type];
+                node.onclick = () => { if(!compareTickers.includes(ev.ticker)) addToComparison(ev.ticker); setTimeout(()=>focusEvent(ev.ticker, ev.date), 1000); };
+                node.innerHTML = `<div class="flex justify-between text-[8px] text-slate-400 font-black"><span>${ev.date}</span><span>${ev.ticker}</span></div><div class="text-xs font-black text-white truncate uppercase italic tracking-tighter">${ev.title}</div>`;
+                list.appendChild(node);
+            });
+        }
+
+        function refreshEventUI() {
+            const grid = document.getElementById('eventGrid'); grid.innerHTML = '';
+            getSortedMergedEvents().forEach((ev, idx) => {
+                const color = TYPE_COLORS[ev.type]; 
+                const sym = ev.ticker.includes('.KS') || ev.ticker.includes('KRW') ? '₩' : '$';
+                const card = document.createElement('div'); card.id = `card-${ev.ticker}-${ev.date}`;
+                card.onclick = () => { document.getElementById('chartContainer').scrollIntoView({ behavior: 'smooth', block: 'center' }); activeHighlight = { ticker: ev.ticker, date: ev.date }; chart.draw(); setTimeout(() => { activeHighlight = null; chart.draw(); }, 3000); };
+                card.className = `p-6 rounded-[2rem] border-2 bg-white relative shadow-sm transition-all cursor-pointer hover:shadow-lg group`;
+                if(ev.type !== 'def') { card.style.borderLeftColor = color; card.style.borderLeftWidth = '8px'; }
+                card.innerHTML = `
+                    <div class="flex justify-between items-start mb-4">
+                        <div class="flex flex-col">
+                            <div class="flex items-center gap-2 mb-1">
+                                <span class="w-5 h-5 flex items-center justify-center bg-slate-900 text-white text-[10px] rounded-full font-black">${idx+1}</span>
+                                <span class="text-[10px] font-black text-slate-900">${ev.ticker}</span>
+                            </div>
+                            <span class="text-[10px] font-mono font-black text-slate-300 uppercase">${ev.date}</span>
+                        </div>
+                        <div class="text-right">
+                            <div class="text-base font-black ${ev.diff >= 0 ? 'text-green-600' : 'text-red-600'} leading-none">
+                                ${ev.diff >= 0 ? '▲' : '▼'} ${sym}${Math.abs(ev.diff).toLocaleString()}
+                            </div>
+                            <div class="text-[10px] font-black text-slate-400 mt-1">
+                                ${ev.pct}% <span class="mx-1 opacity-20">|</span> <span class="text-slate-300 font-bold">${sym}${ev.priceAt.toLocaleString()}</span>
+                            </div>
+                        </div>
+                    </div>
+                    <h4 class="text-xl font-black mb-1 leading-none uppercase italic tracking-tighter">${ev.title}</h4>
+                    <p class="text-xs text-slate-500 font-medium leading-relaxed opacity-80">${ev.desc}</p>
+                    <button onclick="event.stopPropagation(); removeEvent('${ev.ticker}', '${ev.date}')" class="absolute top-4 right-4 opacity-0 group-hover:opacity-100 text-red-400 text-xs">🗑</button>`;
+                grid.appendChild(card);
+            });
+        }
+
+        function saveCombinedSet() {
+            if (compareTickers.length === 0) return;
+            const title = prompt("Set Name:", "Analysis Environment"); if (!title) return;
+            savedCombinedSets.push({ id: Date.now(), title, tickers: [...compareTickers], alerts: JSON.parse(JSON.stringify(alertTickers)), start: document.getElementById('startDate').value, end: document.getElementById('endDate').value, timestamp: new Date().toISOString() });
+            localStorage.setItem('rd_v39_combined', JSON.stringify(savedCombinedSets)); renderCombinedList();
+        }
+
+        function renderCombinedList() {
+            const list = document.getElementById('set-section'); list.innerHTML = '';
+            savedCombinedSets.slice().reverse().forEach(set => {
+                const item = document.createElement('div'); item.className = "p-3 bg-white/10 rounded-xl hover:bg-white/20 cursor-pointer mb-2 relative group transition-all";
+                item.onclick = () => { compareTickers = [...set.tickers]; alertTickers = set.alerts || {}; document.getElementById('startDate').value = set.start; document.getElementById('endDate').value = set.end; updateHubUI(); buildTimeline(); };
+                item.innerHTML = `<div class="text-[11px] font-black">${set.title}</div><div class="text-[8px] opacity-60">${set.tickers.length} Assets | ${new Date(set.timestamp).toLocaleDateString()}</div><button onclick="event.stopPropagation(); deleteSet(${set.id})" class="absolute top-2 right-2 opacity-0 group-hover:opacity-100 text-white">🗑</button>`;
+                list.appendChild(item);
+            });
+        }
+
+        function deleteSet(id) { if(confirm("Del?")) { savedCombinedSets = savedCombinedSets.filter(s => s.id !== id); localStorage.setItem('rd_v39_combined', JSON.stringify(savedCombinedSets)); renderCombinedList(); } }
+        function exportBackup() { const blob = new Blob([JSON.stringify({db: allTickerData, sets: savedCombinedSets})], {type:'application/json'}); const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download=`OS_INTEL_V39.json`; a.click(); }
+        function importBackup(event) { const file = event.target.files[0]; if (!file) return; const reader = new FileReader(); reader.onload = (e) => { try { const data = JSON.parse(e.target.result); allTickerData = data.db; savedCombinedSets = data.sets; location.reload(); } catch (err) { } }; reader.readAsText(file); }
+        function saveAsImage() { document.getElementById('loading').style.display = 'flex'; htmlToImage.toPng(document.getElementById('captureArea'), { pixelRatio: 3, backgroundColor: '#ffffff' }).then(url => { const a = document.createElement('a'); a.download = `FINANCIAL_LOG_V39.png`; a.href = url; a.click(); document.getElementById('loading').style.display = 'none'; }); }
+        function renderBenchmarks() {
+            const container = document.getElementById('benchmarkContainer'); container.innerHTML = '';
+            benchmarkList.forEach((bm, i) => {
+                const btn = document.createElement('button'); btn.className = "benchmark-btn"; btn.innerText = bm.n; btn.onclick = () => addBenchmark(bm.t, bm.n);
+                btn.innerHTML += `<span class="benchmark-del" onclick="event.stopPropagation(); removeBenchmark(${i})">×</span>`;
+                container.appendChild(btn);
+            });
+        }
+        function addBenchmark(t, n) { addToComparison(t, n); buildTimeline(); }
+        function addNewBenchmark() { const t = prompt("Ticker:"); const n = prompt("Name:"); if(t && n) { benchmarkList.push({t: t.toUpperCase(), n: n.toUpperCase()}); localStorage.setItem('rd_v39_bench', JSON.stringify(benchmarkList)); renderBenchmarks(); } }
+        function removeBenchmark(i) { if(confirm("삭제?")) { benchmarkList.splice(i, 1); localStorage.setItem('rd_v39_bench', JSON.stringify(benchmarkList)); renderBenchmarks(); } }
+
+
+        window.onload = init;
+    </script>
+</body>
+</html>
