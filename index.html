@@ -115,6 +115,13 @@
                             <input id="guideLineValue" type="number" step="0.1" placeholder="Horizontal line value" class="w-full text-center text-[10px] font-black bg-white border border-slate-200 rounded-xl p-3 outline-none text-slate-700">
                             <button onclick="addGuideLine()" class="px-4 py-3 rounded-xl bg-slate-900 text-white text-[10px] font-black uppercase tracking-widest hover:bg-black transition-all">+ Line</button>
                         </div>
+                        <div class="flex items-center justify-between gap-3 px-1">
+                            <div>
+                                <div class="text-[9px] font-black text-slate-400 uppercase tracking-widest">Draw On Chart</div>
+                                <div id="guideLineDrawHint" class="text-[9px] font-bold text-slate-300 uppercase">Click Chart To Add</div>
+                            </div>
+                            <button id="guideLineDrawBtn" onclick="toggleGuideLineDrawMode()" class="px-3 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all">Off</button>
+                        </div>
                         <div id="guideLineList" class="space-y-2"></div>
                     </div>
                     <div class="pt-4 border-t border-slate-200 space-y-4">
@@ -258,7 +265,7 @@
         const TYPE_COLORS = { def: '#94a3b8', pos: '#10b981', neg: '#ef4444' };
         const TYPE_LABELS = { def: '기본', pos: '호재', neg: '악재' };
         
-        let chart, compareTickers = [], alertTickers = {}, globalStockData = {}, activeHighlight = null, hoverPoint = null, chartMode = 'line', guideLines = [], showVolume = false;
+        let chart, compareTickers = [], alertTickers = {}, globalStockData = {}, activeHighlight = null, hoverPoint = null, chartMode = 'line', guideLines = [], showVolume = false, guideLineDrawMode = false, guideLineDraft = null, editingEventId = null;
         let allTickerData = JSON.parse(localStorage.getItem('rd_v39_db')) || {};
         let savedCombinedSets = JSON.parse(localStorage.getItem('rd_v39_combined')) || [];
         const DEFAULT_BENCHMARKS = [
@@ -277,7 +284,7 @@
             document.getElementById('startDate').value = fmt(lastYear);
             document.getElementById('eventDate').value = fmt(today);
             normalizeDataStore();
-            renderBenchmarks(); renderHistoryList(); renderUnifiedSearch(); renderGlobalEvents(); renderCombinedList(); updateHubUI(); renderGuideLineUI(); updateChartModeUI(); updateVolumeUI();
+            renderBenchmarks(); renderHistoryList(); renderUnifiedSearch(); renderGlobalEvents(); renderCombinedList(); updateHubUI(); renderGuideLineUI(); updateGuideLineDrawUI(); updateChartModeUI(); updateVolumeUI();
         }
 
 
@@ -364,12 +371,14 @@
             return mode === 'candle' || compareTickers.length === 1 ? 'Price' : 'Return %';
         }
 
-        function addGuideLine() {
+        function addGuideLine(valueOverride = null) {
             const input = document.getElementById('guideLineValue');
-            const value = parseFloat(input.value);
+            const rawValue = valueOverride ?? input.value;
+            const value = parseFloat(rawValue);
             if (!Number.isFinite(value)) return;
             guideLines.push({ id: `guide-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`, value, mode: getEffectiveChartMode() });
             input.value = '';
+            guideLineDraft = null;
             renderGuideLineUI();
             if (chart) chart.draw();
         }
@@ -386,6 +395,22 @@
         function removeGuideLine(id) {
             guideLines = guideLines.filter(item => item.id !== id);
             renderGuideLineUI();
+            if (chart) chart.draw();
+        }
+
+        function updateGuideLineDrawUI() {
+            const button = document.getElementById('guideLineDrawBtn');
+            const hint = document.getElementById('guideLineDrawHint');
+            if (!button || !hint) return;
+            button.className = `px-3 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all ${guideLineDrawMode ? 'bg-blue-600 text-white hover:bg-blue-700' : 'bg-white border border-slate-200 text-slate-500 hover:bg-slate-50'}`;
+            button.innerText = guideLineDrawMode ? 'Armed' : 'Off';
+            hint.innerText = guideLineDrawMode ? 'Click Chart To Add' : 'Input Or Draw';
+        }
+
+        function toggleGuideLineDrawMode() {
+            guideLineDrawMode = !guideLineDrawMode;
+            if (!guideLineDrawMode) guideLineDraft = null;
+            updateGuideLineDrawUI();
             if (chart) chart.draw();
         }
 
@@ -411,7 +436,7 @@
 
         function resetWorkspace() {
             if(!confirm("Reset current hub? DB will remain.")) return;
-            compareTickers = []; alertTickers = {}; globalStockData = {}; showVolume = false;
+            compareTickers = []; alertTickers = {}; globalStockData = {}; showVolume = false; guideLineDrawMode = false; guideLineDraft = null; editingEventId = null;
             if(chart) chart.destroy(); chart = null;
             document.getElementById('outSub').innerHTML = '';
             document.getElementById('outPeriod').innerText = '----.--.--';
@@ -532,6 +557,7 @@
                 alertList.innerHTML = '<div class="p-4 rounded-2xl bg-slate-50 border border-dashed border-slate-200 text-[10px] font-black text-slate-400 uppercase italic">비교 종목을 먼저 추가하세요.</div>';
                 updateChartModeUI();
                 updateVolumeUI();
+                updateGuideLineDrawUI();
                 return;
             }
 
@@ -566,6 +592,7 @@
             });
             updateChartModeUI();
             updateVolumeUI();
+            updateGuideLineDrawUI();
         }
 
         // --- Intelligent Chart Engine ---
@@ -613,6 +640,7 @@
             flagHitAreas = [];
             updateChartModeUI();
             updateVolumeUI();
+            updateGuideLineDrawUI();
             renderGuideLineUI();
 
             const hoverPlugin = {
@@ -685,9 +713,8 @@
             const guideLinePlugin = {
                 id: 'guideLines',
                 afterDatasetsDraw: (c) => {
+                    const { ctx, chartArea: { left, right, top, bottom }, scales: { y } } = c;
                     const visibleLines = guideLines.filter(line => line.mode === effectiveChartMode);
-                    if (visibleLines.length === 0) return;
-                    const { ctx, chartArea: { left, right }, scales: { y } } = c;
                     visibleLines.forEach(line => {
                         const yPos = y.getPixelForValue(line.value);
                         if (!Number.isFinite(yPos)) return;
@@ -705,6 +732,23 @@
                         ctx.fillText(`${getGuideLineModeLabel(effectiveChartMode)} ${line.value}`, right - 8, yPos - 6);
                         ctx.restore();
                     });
+                    if (!guideLineDrawMode || guideLineDraft === null) return;
+                    const yPos = y.getPixelForValue(guideLineDraft);
+                    if (!Number.isFinite(yPos) || yPos < top || yPos > bottom) return;
+                    ctx.save();
+                    ctx.strokeStyle = '#2563eb';
+                    ctx.setLineDash([4, 4]);
+                    ctx.lineWidth = 2;
+                    ctx.beginPath();
+                    ctx.moveTo(left, yPos);
+                    ctx.lineTo(right, yPos);
+                    ctx.stroke();
+                    ctx.setLineDash([]);
+                    ctx.fillStyle = '#2563eb';
+                    ctx.font = '900 10px Pretendard';
+                    ctx.textAlign = 'right';
+                    ctx.fillText(`Preview ${getGuideLineModeLabel(effectiveChartMode)} ${guideLineDraft.toFixed(2)}`, right - 8, yPos - 8);
+                    ctx.restore();
                 }
             };
 
@@ -800,6 +844,12 @@
                         const rect = e.chart.canvas.getBoundingClientRect();
                         const xPos = e.native.clientX - rect.left;
                         const yPos = e.native.clientY - rect.top;
+                        const chartArea = e.chart.chartArea;
+                        if (guideLineDrawMode && chartArea && xPos >= chartArea.left && xPos <= chartArea.right && yPos >= chartArea.top && yPos <= chartArea.bottom) {
+                            guideLineDraft = Number(e.chart.scales.y.getValueForPixel(yPos).toFixed(2));
+                        } else if (guideLineDrawMode) {
+                            guideLineDraft = null;
+                        }
                         
                         // Find index by X position
                         const points = chart.getElementsAtEventForMode(e.native, 'index', { intersect: false }, true);
@@ -814,7 +864,7 @@
                             
                             // Cursor Styling
                             const isOverFlag = flagHitAreas.some(f => Math.sqrt((xPos - f.x)**2 + (yPos - f.y)**2) < f.radius);
-                            e.native.target.style.cursor = isOverFlag ? 'pointer' : 'default';
+                            e.native.target.style.cursor = isOverFlag ? 'pointer' : (guideLineDrawMode ? 'crosshair' : 'default');
 
                             // Show Unified Tooltip
                             tip.style.display = 'block';
@@ -864,13 +914,28 @@
                                 });
                             } else { evSec.classList.add('hidden'); }
 
-                        } else { tip.style.display = 'none'; hoverPoint = null; e.native.target.style.cursor = 'default'; }
+                        } else {
+                            tip.style.display = 'none';
+                            hoverPoint = null;
+                            e.native.target.style.cursor = guideLineDrawMode ? 'crosshair' : 'default';
+                        }
                         chart.draw();
                     },
                     onClick: (e) => {
                         const rect = e.chart.canvas.getBoundingClientRect();
                         const hit = flagHitAreas.find(f => Math.sqrt((e.native.clientX - rect.left - f.x)**2 + (e.native.clientY - rect.top - f.y)**2) < f.radius);
-                        if (hit) focusEvent(hit.ticker, hit.date);
+                        if (hit) {
+                            focusEvent(hit.ticker, hit.date);
+                            return;
+                        }
+                        const chartArea = e.chart.chartArea;
+                        const xPos = e.native.clientX - rect.left;
+                        const yPos = e.native.clientY - rect.top;
+                        if (guideLineDrawMode && chartArea && xPos >= chartArea.left && xPos <= chartArea.right && yPos >= chartArea.top && yPos <= chartArea.bottom) {
+                            const value = Number(e.chart.scales.y.getValueForPixel(yPos).toFixed(2));
+                            document.getElementById('guideLineValue').value = value;
+                            addGuideLine(value);
+                        }
                     },
                     plugins: { legend: { display: false }, tooltip: { enabled: false } },
                     scales: {
@@ -906,12 +971,60 @@
             saveData(); refreshEventUI(); renderChart(); renderUnifiedSearch(); renderGlobalEvents(); renderHistoryList();
         }
 
+        function getEventRecord(ticker, eventId) {
+            return allTickerData[ticker]?.events?.find(event => event.id === eventId) || null;
+        }
+
+        function hydrateEventMetrics(ticker, event) {
+            const pts = globalStockData[ticker] || [];
+            const current = pts.find(point => point.date === event.date);
+            if (!current) return true;
+            event.diff = current.diff_today;
+            event.pct = current.change_today;
+            event.priceAt = current.price;
+            return true;
+        }
+
+        function startEditEvent(ticker, eventId) {
+            const event = getEventRecord(ticker, eventId);
+            if (!event) return;
+            editingEventId = eventId;
+            refreshEventUI();
+            const form = document.getElementById(`event-edit-form-${eventId}`);
+            if (form) form.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        }
+
+        function cancelEditEvent() {
+            editingEventId = null;
+            refreshEventUI();
+        }
+
+        function saveEventEdit(ticker, eventId) {
+            const event = getEventRecord(ticker, eventId);
+            if (!event) return;
+            const nextDate = document.getElementById(`editDate-${eventId}`).value;
+            const nextTitle = document.getElementById(`editTitle-${eventId}`).value.trim();
+            const nextDesc = document.getElementById(`editDesc-${eventId}`).value.trim();
+            const nextType = document.getElementById(`editType-${eventId}`).value;
+            if (!nextDate || !nextTitle) return alert('Date and title required');
+            const pts = globalStockData[ticker] || [];
+            if (pts.length > 0 && !pts.some(point => point.date === nextDate)) return alert('Day Locked (Closed)');
+            event.date = nextDate;
+            event.title = nextTitle;
+            event.desc = nextDesc;
+            event.type = nextType;
+            hydrateEventMetrics(ticker, event);
+            allTickerData[ticker].lastUpdate = new Date().toISOString();
+            editingEventId = null;
+            saveData(); refreshEventUI(); renderChart(); renderUnifiedSearch(); renderGlobalEvents(); renderHistoryList();
+        }
+
         function focusEvent(t, d) {
-            const id = `card-${t}-${d}`; const el = document.getElementById(id);
+            const el = document.querySelector(`[data-event-ticker="${t}"][data-event-date="${d}"]`);
             if (el) { el.scrollIntoView({ behavior: 'smooth', block: 'center' }); document.querySelectorAll('.focused-card').forEach(c => c.classList.remove('focused-card')); el.classList.add('focused-card'); activeHighlight = { ticker: t, date: d }; chart.draw(); setTimeout(() => { el.classList.remove('focused-card'); activeHighlight = null; chart.draw(); }, 3000); }
         }
 
-        function removeEvent(t, d) { if(confirm("Del?")) { allTickerData[t].events = allTickerData[t].events.filter(e => e.date !== d); saveData(); refreshEventUI(); renderChart(); renderUnifiedSearch(); renderGlobalEvents(); renderHistoryList(); } }
+        function removeEvent(ticker, eventId) { if(confirm("Del?")) { allTickerData[ticker].events = allTickerData[ticker].events.filter(event => event.id !== eventId); if (editingEventId === eventId) editingEventId = null; saveData(); refreshEventUI(); renderChart(); renderUnifiedSearch(); renderGlobalEvents(); renderHistoryList(); } }
         function toggleSection(id) { const sec = document.getElementById(id); const isHidden = sec.classList.toggle('hidden'); document.getElementById(id+'-icon').innerText = isHidden ? '▼' : '▲'; }
         function getSortedMergedEvents() { let m = []; compareTickers.forEach(t => { if(allTickerData[t]) allTickerData[t].events.forEach(e => m.push({ ...e, ticker: t, _eventRef: e })); }); return m.sort((a,b) => new Date(a.date) - new Date(b.date)); }
         function getTickerEventNumber(event) {
@@ -993,31 +1106,71 @@
             getSortedMergedEvents().forEach((ev) => {
                 const color = TYPE_COLORS[ev.type]; 
                 const sym = ev.ticker.includes('.KS') || ev.ticker.includes('KRW') ? '₩' : '$';
-                const card = document.createElement('div'); card.id = `card-${ev.ticker}-${ev.date}`;
-                card.onclick = () => { document.getElementById('chartContainer').scrollIntoView({ behavior: 'smooth', block: 'center' }); activeHighlight = { ticker: ev.ticker, date: ev.date }; chart.draw(); setTimeout(() => { activeHighlight = null; chart.draw(); }, 3000); };
-                card.className = `p-6 rounded-[2rem] border-2 bg-white relative shadow-sm transition-all cursor-pointer hover:shadow-lg group`;
+                const isEditing = editingEventId === ev.id;
+                const card = document.createElement('div');
+                card.id = `card-${ev.id}`;
+                card.dataset.eventId = ev.id;
+                card.dataset.eventTicker = ev.ticker;
+                card.dataset.eventDate = ev.date;
+                if (!isEditing) {
+                    card.onclick = () => { document.getElementById('chartContainer').scrollIntoView({ behavior: 'smooth', block: 'center' }); activeHighlight = { ticker: ev.ticker, date: ev.date }; chart.draw(); setTimeout(() => { activeHighlight = null; chart.draw(); }, 3000); };
+                }
+                card.className = `p-6 rounded-[2rem] border-2 bg-white relative shadow-sm transition-all ${isEditing ? '' : 'cursor-pointer hover:shadow-lg'} group`;
                 if(ev.type !== 'def') { card.style.borderLeftColor = color; card.style.borderLeftWidth = '8px'; }
-                card.innerHTML = `
-                    <div class="flex justify-between items-start mb-4">
-                        <div class="flex flex-col">
-                            <div class="flex items-center gap-2 mb-1">
-                                <span class="w-5 h-5 flex items-center justify-center bg-slate-900 text-white text-[10px] rounded-full font-black">${getTickerEventNumber(ev)}</span>
-                                <span class="text-[10px] font-black text-slate-900">${ev.ticker}</span>
+                if (isEditing) {
+                    card.innerHTML = `
+                        <div id="event-edit-form-${ev.id}" class="space-y-4">
+                            <div class="flex items-center justify-between gap-3">
+                                <div class="flex items-center gap-2">
+                                    <span class="w-6 h-6 flex items-center justify-center bg-blue-600 text-white text-[10px] rounded-full font-black">${getTickerEventNumber(ev)}</span>
+                                    <span class="text-[10px] font-black text-slate-900 uppercase">${ev.ticker}</span>
+                                </div>
+                                <span class="text-[10px] font-black text-blue-500 uppercase">Editing</span>
                             </div>
-                            <span class="text-[10px] font-mono font-black text-slate-300 uppercase">${ev.date}</span>
+                            <div class="grid grid-cols-2 gap-3">
+                                <input id="editDate-${ev.id}" type="date" value="${ev.date}" class="w-full border p-3 rounded-xl text-xs font-bold outline-none">
+                                <select id="editType-${ev.id}" class="w-full border p-3 rounded-xl text-xs font-black outline-none bg-white">
+                                    <option value="def" ${ev.type === 'def' ? 'selected' : ''}>기본</option>
+                                    <option value="pos" ${ev.type === 'pos' ? 'selected' : ''}>호재</option>
+                                    <option value="neg" ${ev.type === 'neg' ? 'selected' : ''}>악재</option>
+                                </select>
+                            </div>
+                            <input id="editTitle-${ev.id}" type="text" value="${(ev.title || '').replace(/"/g, '&quot;')}" class="w-full border p-3 rounded-xl text-xs font-black outline-none">
+                            <textarea id="editDesc-${ev.id}" rows="3" class="w-full border p-3 rounded-xl text-xs resize-none font-medium outline-none">${ev.desc || ''}</textarea>
+                            <div class="flex items-center justify-between gap-2">
+                                <div class="text-[10px] font-black text-slate-300">${sym}${Number(ev.priceAt || 0).toLocaleString()} | ${ev.pct}%</div>
+                                <div class="flex gap-2">
+                                    <button onclick="event.stopPropagation(); cancelEditEvent()" class="px-4 py-2 rounded-xl bg-slate-100 text-slate-500 text-[10px] font-black uppercase tracking-widest">Cancel</button>
+                                    <button onclick="event.stopPropagation(); saveEventEdit('${ev.ticker}', '${ev.id}')" class="px-4 py-2 rounded-xl bg-slate-900 text-white text-[10px] font-black uppercase tracking-widest">Save</button>
+                                </div>
+                            </div>
+                        </div>`;
+                } else {
+                    card.innerHTML = `
+                        <div class="flex justify-between items-start mb-4">
+                            <div class="flex flex-col">
+                                <div class="flex items-center gap-2 mb-1">
+                                    <span class="w-5 h-5 flex items-center justify-center bg-slate-900 text-white text-[10px] rounded-full font-black">${getTickerEventNumber(ev)}</span>
+                                    <span class="text-[10px] font-black text-slate-900">${ev.ticker}</span>
+                                </div>
+                                <span class="text-[10px] font-mono font-black text-slate-300 uppercase">${ev.date}</span>
+                            </div>
+                            <div class="text-right pr-20">
+                                <div class="text-base font-black ${ev.diff >= 0 ? 'text-green-600' : 'text-red-600'} leading-none">
+                                    ${ev.diff >= 0 ? '▲' : '▼'} ${sym}${Math.abs(ev.diff).toLocaleString()}
+                                </div>
+                                <div class="text-[10px] font-black text-slate-400 mt-1">
+                                    ${ev.pct}% <span class="mx-1 opacity-20">|</span> <span class="text-slate-300 font-bold">${sym}${Number(ev.priceAt || 0).toLocaleString()}</span>
+                                </div>
+                            </div>
                         </div>
-                        <div class="text-right">
-                            <div class="text-base font-black ${ev.diff >= 0 ? 'text-green-600' : 'text-red-600'} leading-none">
-                                ${ev.diff >= 0 ? '▲' : '▼'} ${sym}${Math.abs(ev.diff).toLocaleString()}
-                            </div>
-                            <div class="text-[10px] font-black text-slate-400 mt-1">
-                                ${ev.pct}% <span class="mx-1 opacity-20">|</span> <span class="text-slate-300 font-bold">${sym}${ev.priceAt.toLocaleString()}</span>
-                            </div>
-                        </div>
-                    </div>
-                    <h4 class="text-xl font-black mb-1 leading-none uppercase italic tracking-tighter">${ev.title}</h4>
-                    <p class="text-xs text-slate-500 font-medium leading-relaxed opacity-80">${ev.desc}</p>
-                    <button onclick="event.stopPropagation(); removeEvent('${ev.ticker}', '${ev.date}')" class="absolute top-4 right-4 opacity-0 group-hover:opacity-100 text-red-400 text-xs">🗑</button>`;
+                        <h4 class="text-xl font-black mb-1 leading-none uppercase italic tracking-tighter">${ev.title}</h4>
+                        <p class="text-xs text-slate-500 font-medium leading-relaxed opacity-80">${ev.desc}</p>
+                        <div class="absolute top-4 right-4 flex items-center gap-2 opacity-0 group-hover:opacity-100 transition-all">
+                            <button onclick="event.stopPropagation(); startEditEvent('${ev.ticker}', '${ev.id}')" class="text-blue-500 text-[10px] font-black uppercase">Edit</button>
+                            <button onclick="event.stopPropagation(); removeEvent('${ev.ticker}', '${ev.id}')" class="text-red-400 text-xs">🗑</button>
+                        </div>`;
+                }
                 grid.appendChild(card);
             });
         }
