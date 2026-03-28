@@ -115,6 +115,10 @@
                             <input id="guideLineValue" type="number" step="0.1" placeholder="Horizontal line value" class="w-full text-center text-[10px] font-black bg-white border border-slate-200 rounded-xl p-3 outline-none text-slate-700">
                             <button onclick="addGuideLine()" class="px-4 py-3 rounded-xl bg-slate-900 text-white text-[10px] font-black uppercase tracking-widest hover:bg-black transition-all">+ Line</button>
                         </div>
+                        <div class="grid grid-cols-[92px_minmax(0,1fr)] gap-2 items-center">
+                            <input id="guideLineColor" type="color" value="#0f172a" class="w-full h-11 bg-white border border-slate-200 rounded-xl p-1 cursor-pointer">
+                            <input id="guideLineNote" type="text" placeholder="Line memo" class="w-full text-[10px] font-black bg-white border border-slate-200 rounded-xl p-3 outline-none text-slate-700 uppercase tracking-wide">
+                        </div>
                         <div class="flex items-center justify-between gap-3 px-1">
                             <div>
                                 <div class="text-[9px] font-black text-slate-400 uppercase tracking-widest">Draw On Chart</div>
@@ -373,11 +377,14 @@
 
         function addGuideLine(valueOverride = null) {
             const input = document.getElementById('guideLineValue');
+            const colorInput = document.getElementById('guideLineColor');
+            const noteInput = document.getElementById('guideLineNote');
             const rawValue = valueOverride ?? input.value;
             const value = parseFloat(rawValue);
             if (!Number.isFinite(value)) return;
-            guideLines.push({ id: `guide-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`, value, mode: getEffectiveChartMode() });
+            guideLines.push({ id: `guide-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`, value, mode: getEffectiveChartMode(), color: colorInput?.value || '#0f172a', note: (noteInput?.value || '').trim() });
             input.value = '';
+            if (noteInput) noteInput.value = '';
             guideLineDraft = null;
             renderGuideLineUI();
             if (chart) chart.draw();
@@ -389,6 +396,20 @@
             const line = guideLines.find(item => item.id === id);
             if (!line) return;
             line.value = parsed;
+            if (chart) chart.draw();
+        }
+
+        function updateGuideLineColor(id, value) {
+            const line = guideLines.find(item => item.id === id);
+            if (!line) return;
+            line.color = value || '#0f172a';
+            if (chart) chart.draw();
+        }
+
+        function updateGuideLineNote(id, value) {
+            const line = guideLines.find(item => item.id === id);
+            if (!line) return;
+            line.note = value.trim();
             if (chart) chart.draw();
         }
 
@@ -426,10 +447,14 @@
             guideLines.forEach(line => {
                 const active = line.mode === currentMode;
                 list.innerHTML += `
-                    <div class="flex items-center gap-2 ${active ? '' : 'opacity-40'}">
-                        <span class="w-16 text-[9px] font-black text-slate-400 uppercase">${line.mode === 'candle' || line.mode === 'line' && compareTickers.length === 1 ? 'Price' : 'Return %'}</span>
-                        <input type="number" step="0.1" value="${line.value}" onchange="updateGuideLine('${line.id}', this.value)" class="flex-1 text-center text-[10px] font-black bg-white border border-slate-200 rounded-xl p-2 outline-none text-slate-700">
-                        <button onclick="removeGuideLine('${line.id}')" class="px-3 py-2 rounded-xl bg-red-50 text-red-500 text-[10px] font-black hover:bg-red-100 transition-all">DEL</button>
+                    <div class="space-y-2 ${active ? '' : 'opacity-40'}">
+                        <div class="flex items-center gap-2">
+                            <span class="w-16 text-[9px] font-black text-slate-400 uppercase">${line.mode === 'candle' || line.mode === 'line' && compareTickers.length === 1 ? 'Price' : 'Return %'}</span>
+                            <input type="number" step="0.1" value="${line.value}" onchange="updateGuideLine('${line.id}', this.value)" class="flex-1 text-center text-[10px] font-black bg-white border border-slate-200 rounded-xl p-2 outline-none text-slate-700">
+                            <input type="color" value="${line.color || '#0f172a'}" onchange="updateGuideLineColor('${line.id}', this.value)" class="w-12 h-9 bg-white border border-slate-200 rounded-xl p-1 cursor-pointer">
+                            <button onclick="removeGuideLine('${line.id}')" class="px-3 py-2 rounded-xl bg-red-50 text-red-500 text-[10px] font-black hover:bg-red-100 transition-all">DEL</button>
+                        </div>
+                        <input type="text" value="${(line.note || '').replace(/"/g, '&quot;')}" onchange="updateGuideLineNote('${line.id}', this.value)" placeholder="Line memo" class="w-full text-[10px] font-black bg-white border border-slate-200 rounded-xl p-2 outline-none text-slate-700 uppercase tracking-wide">
                     </div>`;
             });
         }
@@ -719,24 +744,27 @@
                         const yPos = y.getPixelForValue(line.value);
                         if (!Number.isFinite(yPos)) return;
                         ctx.save();
-                        ctx.strokeStyle = '#0f172a55';
+                        const lineColor = line.color || '#0f172a';
+                        ctx.strokeStyle = `${lineColor}88`;
                         ctx.setLineDash([8, 6]);
                         ctx.beginPath();
                         ctx.moveTo(left, yPos);
                         ctx.lineTo(right, yPos);
                         ctx.stroke();
                         ctx.setLineDash([]);
-                        ctx.fillStyle = '#0f172a';
+                        ctx.fillStyle = line.color || '#0f172a';
                         ctx.font = '900 10px Pretendard';
                         ctx.textAlign = 'right';
-                        ctx.fillText(`${getGuideLineModeLabel(effectiveChartMode)} ${line.value}`, right - 8, yPos - 6);
+                        const label = line.note ? `${line.note} | ${getGuideLineModeLabel(effectiveChartMode)} ${line.value}` : `${getGuideLineModeLabel(effectiveChartMode)} ${line.value}`;
+                        ctx.fillText(label, right - 8, yPos - 6);
                         ctx.restore();
                     });
                     if (!guideLineDrawMode || guideLineDraft === null) return;
                     const yPos = y.getPixelForValue(guideLineDraft);
                     if (!Number.isFinite(yPos) || yPos < top || yPos > bottom) return;
                     ctx.save();
-                    ctx.strokeStyle = '#2563eb';
+                    const previewColor = document.getElementById('guideLineColor')?.value || '#2563eb';
+                    ctx.strokeStyle = previewColor;
                     ctx.setLineDash([4, 4]);
                     ctx.lineWidth = 2;
                     ctx.beginPath();
@@ -744,10 +772,11 @@
                     ctx.lineTo(right, yPos);
                     ctx.stroke();
                     ctx.setLineDash([]);
-                    ctx.fillStyle = '#2563eb';
+                    ctx.fillStyle = previewColor;
                     ctx.font = '900 10px Pretendard';
                     ctx.textAlign = 'right';
-                    ctx.fillText(`Preview ${getGuideLineModeLabel(effectiveChartMode)} ${guideLineDraft.toFixed(2)}`, right - 8, yPos - 8);
+                    const previewNote = (document.getElementById('guideLineNote')?.value || '').trim();
+                    ctx.fillText(`${previewNote ? `${previewNote} | ` : ''}Preview ${getGuideLineModeLabel(effectiveChartMode)} ${guideLineDraft.toFixed(2)}`, right - 8, yPos - 8);
                     ctx.restore();
                 }
             };
@@ -921,6 +950,14 @@
                         }
                         chart.draw();
                     },
+                    onLeave: (e) => {
+                        guideLineDraft = null;
+                        hoverPoint = null;
+                        const tip = document.getElementById('intelTooltip');
+                        if (tip) tip.style.display = 'none';
+                        e.native.target.style.cursor = 'default';
+                        if (chart) chart.draw();
+                    },
                     onClick: (e) => {
                         const rect = e.chart.canvas.getBoundingClientRect();
                         const hit = flagHitAreas.find(f => Math.sqrt((e.native.clientX - rect.left - f.x)**2 + (e.native.clientY - rect.top - f.y)**2) < f.radius);
@@ -1022,6 +1059,15 @@
         function focusEvent(t, d) {
             const el = document.querySelector(`[data-event-ticker="${t}"][data-event-date="${d}"]`);
             if (el) { el.scrollIntoView({ behavior: 'smooth', block: 'center' }); document.querySelectorAll('.focused-card').forEach(c => c.classList.remove('focused-card')); el.classList.add('focused-card'); activeHighlight = { ticker: t, date: d }; chart.draw(); setTimeout(() => { el.classList.remove('focused-card'); activeHighlight = null; chart.draw(); }, 3000); }
+        }
+
+        function duplicateEvent(ticker, eventId) {
+            const event = getEventRecord(ticker, eventId);
+            if (!event) return;
+            const duplicate = { ...event, id: `event-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`, title: `${event.title} Copy` };
+            allTickerData[ticker].events.push(duplicate);
+            allTickerData[ticker].lastUpdate = new Date().toISOString();
+            saveData(); refreshEventUI(); renderChart(); renderUnifiedSearch(); renderGlobalEvents(); renderHistoryList();
         }
 
         function removeEvent(ticker, eventId) { if(confirm("Del?")) { allTickerData[ticker].events = allTickerData[ticker].events.filter(event => event.id !== eventId); if (editingEventId === eventId) editingEventId = null; saveData(); refreshEventUI(); renderChart(); renderUnifiedSearch(); renderGlobalEvents(); renderHistoryList(); } }
@@ -1168,6 +1214,7 @@
                         <p class="text-xs text-slate-500 font-medium leading-relaxed opacity-80">${ev.desc}</p>
                         <div class="absolute top-4 right-4 flex items-center gap-2 opacity-0 group-hover:opacity-100 transition-all">
                             <button onclick="event.stopPropagation(); startEditEvent('${ev.ticker}', '${ev.id}')" class="text-blue-500 text-[10px] font-black uppercase">Edit</button>
+                            <button onclick="event.stopPropagation(); duplicateEvent('${ev.ticker}', '${ev.id}')" class="text-emerald-500 text-[10px] font-black uppercase">Copy</button>
                             <button onclick="event.stopPropagation(); removeEvent('${ev.ticker}', '${ev.id}')" class="text-red-400 text-xs">🗑</button>
                         </div>`;
                 }
