@@ -457,13 +457,13 @@
                             const date = c.data.labels[i];
                             const evsOnDate = merged.filter(e => e.date === date && e.ticker === ticker);
                             evsOnDate.forEach((ev, ei) => {
-                                const gi = merged.indexOf(ev); const yo = 25 + (ei * 25);
+                                const tickerEventNumber = getTickerEventNumber(ev); const yo = 25 + (ei * 25);
                                 ctx.save();
                                 if(activeHighlight && activeHighlight.ticker === ticker && activeHighlight.date === date) {
                                     ctx.beginPath(); ctx.strokeStyle='#2563eb'; ctx.lineWidth=3; ctx.arc(pt.x, pt.y, 15, 0, Math.PI*2); ctx.stroke();
                                 }
                                 ctx.fillStyle = TYPE_COLORS[ev.type]; ctx.beginPath(); ctx.arc(pt.x, pt.y - yo, 10, 0, Math.PI * 2); ctx.fill();
-                                ctx.fillStyle='white'; ctx.font='bold 10px Pretendard'; ctx.textAlign='center'; ctx.textBaseline='middle'; ctx.fillText(gi+1, pt.x, pt.y - yo);
+                                ctx.fillStyle='white'; ctx.font='bold 10px Pretendard'; ctx.textAlign='center'; ctx.textBaseline='middle'; ctx.fillText(tickerEventNumber, pt.x, pt.y - yo);
                                 ctx.beginPath(); ctx.moveTo(pt.x, pt.y-(yo-10)); ctx.lineTo(pt.x, pt.y-5); ctx.strokeStyle=TYPE_COLORS[ev.type]; ctx.stroke();
                                 flagHitAreas.push({ x: pt.x, y: pt.y - yo, radius: 12, ticker, date });
                                 ctx.restore();
@@ -557,11 +557,11 @@
                                 evSec.classList.remove('hidden');
                                 const evList = document.getElementById('ttEventList'); evList.innerHTML = '';
                                 dayEvents.forEach(ev => {
-                                    const gi = merged.indexOf(ev) + 1;
+                                    const tickerEventNumber = getTickerEventNumber(ev);
                                     evList.innerHTML += `
                                         <div class="pop-item">
                                             <div class="flex items-center gap-2 mb-1">
-                                                <span class="w-4 h-4 flex items-center justify-center bg-white text-slate-900 rounded-full text-[8px] font-black">${gi}</span>
+                                                <span class="w-4 h-4 flex items-center justify-center bg-white text-slate-900 rounded-full text-[8px] font-black">${tickerEventNumber}</span>
                                                 <span class="text-[8px] font-black px-2 py-0.5 rounded-full" style="background:${TYPE_COLORS[ev.type]}">${TYPE_LABELS[ev.type]}</span>
                                                 <span class="text-[8px] text-white/40 font-bold uppercase">${ev.ticker}</span>
                                             </div>
@@ -614,6 +614,9 @@
         function removeEvent(t, d) { if(confirm("Del?")) { allTickerData[t].events = allTickerData[t].events.filter(e => e.date !== d); saveData(); refreshEventUI(); renderChart(); } }
         function toggleSection(id) { const sec = document.getElementById(id); const isHidden = sec.classList.toggle('hidden'); document.getElementById(id+'-icon').innerText = isHidden ? '▼' : '▲'; }
         function getSortedMergedEvents() { let m = []; compareTickers.forEach(t => { if(allTickerData[t]) allTickerData[t].events.forEach(e => m.push({ ...e, ticker: t })); }); return m.sort((a,b) => new Date(a.date) - new Date(b.date)); }
+        function getTickerEventNumber(event) {
+            return getSortedMergedEvents().filter(e => e.ticker === event.ticker).findIndex(e => e === event) + 1;
+        }
         function saveData() { localStorage.setItem('rd_v39_db', JSON.stringify(allTickerData)); }
         
         function renderHistoryList() {
@@ -643,7 +646,7 @@
 
         function refreshEventUI() {
             const grid = document.getElementById('eventGrid'); grid.innerHTML = '';
-            getSortedMergedEvents().forEach((ev, idx) => {
+            getSortedMergedEvents().forEach((ev) => {
                 const color = TYPE_COLORS[ev.type]; 
                 const sym = ev.ticker.includes('.KS') || ev.ticker.includes('KRW') ? '₩' : '$';
                 const card = document.createElement('div'); card.id = `card-${ev.ticker}-${ev.date}`;
@@ -654,7 +657,7 @@
                     <div class="flex justify-between items-start mb-4">
                         <div class="flex flex-col">
                             <div class="flex items-center gap-2 mb-1">
-                                <span class="w-5 h-5 flex items-center justify-center bg-slate-900 text-white text-[10px] rounded-full font-black">${idx+1}</span>
+                                <span class="w-5 h-5 flex items-center justify-center bg-slate-900 text-white text-[10px] rounded-full font-black">${getTickerEventNumber(ev)}</span>
                                 <span class="text-[10px] font-black text-slate-900">${ev.ticker}</span>
                             </div>
                             <span class="text-[10px] font-mono font-black text-slate-300 uppercase">${ev.date}</span>
