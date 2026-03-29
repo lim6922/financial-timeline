@@ -1,0 +1,589 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Mugeuk Master V51.6 (Pure Symmetry)</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html-to-image/1.11.11/html-to-image.min.js"></script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Pretendard:wght@400;700;900&display=swap');
+        body { font-family: 'Pretendard', sans-serif; letter-spacing: -0.02em; background-color: #f1f5f9; color: #0f172a; }
+        .master-panel { background: white; border-radius: 2rem; box-shadow: 0 15px 35px rgba(0,0,0,0.05); border: 1px solid #e2e8f0; }
+        .report-canvas { width: 1400px; min-height: 2950px; background: white; padding: 60px; position: relative; margin: auto; }
+        .matrix-table { width: 100%; border-collapse: collapse; font-size: 11px; text-align: center; }
+        .matrix-table th { background: #f8fafc; border: 1px solid #e2e8f0; padding: 12px; font-weight: 900; color: #64748b; text-transform: uppercase; }
+        .matrix-table td { border: 1px solid #e2e8f0; padding: 10px; font-weight: 700; }
+        .lvl-major { background: #fffbeb; font-weight: 900 !important; border-top: 2px solid #f59e0b !important; border-bottom: 2px solid #f59e0b !important; }
+        .lvl-current { background: #f0fdf4; border: 2px solid #22c55e !important; }
+        .rise-text { color: #ef4444; } 
+        .fall-text { color: #3b82f6; }
+        .loading-overlay { display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(255,255,255,0.9); z-index:9999; justify-content:center; align-items:center; flex-direction:column; }
+    </style>
+</head>
+<body class="p-6">
+
+    <div id="loading" class="loading-overlay">
+        <div class="animate-spin rounded-full h-12 w-12 border-t-4 border-slate-900 mb-4"></div>
+        <div class="font-black text-slate-900 text-xs tracking-widest uppercase italic">Mugeuk Vector Engine V51.6...</div>
+    </div>
+
+    <div class="max-w-[2500px] mx-auto grid grid-cols-1 xl:grid-cols-[450px_1fr] gap-8">
+        <!-- SIDEBAR -->
+        <div class="space-y-6">
+            <div class="master-panel p-8 space-y-6 sticky top-6">
+                <div>
+                    <h2 class="text-3xl font-black italic tracking-tighter text-slate-900">MUGEUK V51.6</h2>
+                    <p class="text-[10px] font-bold text-slate-400 uppercase tracking-widest mt-1">Pure Time Symmetry Edition</p>
+                </div>
+
+                <div class="space-y-4">
+                    <div class="flex gap-2">
+                        <input id="tickerCode" type="text" placeholder="종목코드" class="bg-slate-50 p-3 rounded-xl font-bold w-full border border-slate-200 uppercase outline-none">
+                        <button onclick="fetchStockData()" class="bg-slate-900 text-white px-6 rounded-xl font-black text-xs italic">SYNC</button>
+                    </div>
+                    <div class="p-5 bg-slate-50 rounded-2xl space-y-3 border border-slate-100">
+                        <p class="text-[10px] font-black text-slate-500 uppercase italic">Analysis Range</p>
+                        <div class="grid grid-cols-2 gap-2">
+                            <input id="waveStart" type="date" class="text-xs p-2 rounded-lg border">
+                            <input id="waveEnd" type="date" class="text-xs p-2 rounded-lg border">
+                        </div>
+                        <button onclick="syncRangeWithData()" class="w-full text-[10px] font-black text-blue-600 bg-white border py-2 rounded-lg mt-2">자동 기간 설정</button>
+                    </div>
+                </div>
+
+                <div class="space-y-4 border-t pt-5">
+                    <div class="bg-slate-50 p-4 rounded-2xl space-y-3">
+                        <p class="text-[10px] font-black text-slate-500 uppercase italic">Display Config</p>
+                        <div class="grid grid-cols-1 gap-2">
+                            <label class="flex items-center gap-2"><input type="checkbox" id="showSub" checked onchange="updateChart()"><span class="text-[10px] font-bold">16-Matrix 미세선 & 가격</span></label>
+                            <label class="flex items-center gap-2"><input type="checkbox" id="showTime" checked onchange="updateChart()"><span class="text-[10px] font-bold">시간 대칭(Time Symmetry)</span></label>
+                            <label class="flex items-center gap-2"><input type="checkbox" id="showVector" checked onchange="updateChart()"><span class="text-[10px] font-bold">현재가(LTP) & 벡터 라인</span></label>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="grid grid-cols-2 gap-2">
+                    <button onclick="runAnalysis()" class="bg-slate-900 text-white py-4 rounded-xl font-black text-xs uppercase tracking-widest shadow-lg">분석 실행</button>
+                    <button onclick="resetAnalysis()" class="bg-white border border-slate-200 text-slate-400 py-4 rounded-xl font-black text-xs uppercase tracking-widest">엔진 초기화</button>
+                </div>
+                <button onclick="exportToPNG()" class="w-full py-3 border border-slate-200 text-slate-400 rounded-xl font-black text-[10px] uppercase">Export PNG Report</button>
+            </div>
+        </div>
+
+        <!-- REPORT -->
+        <div class="min-w-0">
+            <div id="captureArea" class="report-canvas master-panel">
+                <div class="flex justify-between items-end mb-12 border-b-[12px] border-slate-900 pb-10">
+                    <div>
+                        <div id="statusBadge" class="inline-block px-4 py-1.5 bg-slate-400 text-white text-[11px] font-black rounded-sm mb-4 uppercase italic">Ready</div>
+                        <h1 id="stockTitle" class="text-8xl font-black italic tracking-tighter uppercase leading-none">STRATEGY</h1>
+                        <div id="metaInfo" class="flex gap-4 mt-6 text-sm font-bold text-slate-400 uppercase tracking-widest font-mono">
+                            MUGEUK VECTOR MASTER V51.6
+                        </div>
+                    </div>
+                    <div class="text-right">
+                        <div id="periodDisplay" class="text-xl font-black text-slate-300 uppercase italic">0000.00.00 ~ 0000.00.00</div>
+                        <div class="text-[11px] font-black text-slate-400 uppercase mt-2 italic">Pure Symmetry Analysis</div>
+                    </div>
+                </div>
+
+                <div class="relative h-[1300px] mb-16">
+                    <canvas id="mainChart"></canvas>
+                </div>
+
+                <div class="grid grid-cols-[1fr_480px] gap-12">
+                    <div class="space-y-6">
+                        <h3 class="text-sm font-black uppercase tracking-[0.3em] border-b-4 border-slate-900 pb-2 mb-6 italic">Price Matrix & Delta Analysis</h3>
+                        <div class="overflow-hidden rounded-2xl border border-slate-200">
+                            <table class="matrix-table" id="matrixTable">
+                                <thead>
+                                    <tr>
+                                        <th>Level (%)</th>
+                                        <th>Price</th>
+                                        <th>Growth</th>
+                                        <th>Drawdown</th>
+                                        <th>Gap to LTP</th>
+                                    </tr>
+                                </thead>
+                                <tbody></tbody>
+                            </table>
+                        </div>
+                    </div>
+
+                    <div class="space-y-10">
+                        <div class="space-y-6">
+                            <h3 class="text-sm font-black uppercase tracking-[0.3em] border-b-4 border-slate-900 pb-2 mb-6 italic">Strategic Wisdom</h3>
+                            <div id="strategyBox" class="p-8 rounded-[2.5rem] bg-slate-50 border border-slate-100 min-h-[650px]">
+                                <div id="strategyContent" class="space-y-6 text-slate-700">
+                                    <p class="text-[17px] font-bold italic text-slate-400 text-center py-20">범위 설정 후 분석을 시작하십시오.</p>
+                                </div>
+                            </div>
+                        </div>
+                        <div id="nodeSummary"></div>
+                    </div>
+                </div>
+
+                <div class="absolute bottom-10 left-[60px] right-[60px] flex justify-between items-center text-[10px] text-slate-300 font-bold tracking-[0.5em] border-t pt-8 uppercase">
+                    <span>Mugeuk Full Pure Symmetry Analysis V51.6</span>
+                    <span id="footerTimestamp">----</span>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const API_BASE = "https://api-research-desk-os.supreme6922.workers.dev";
+        let chart, stockData = [], mugeuk = null;
+
+        function formatDDay(diff) {
+            if (diff > 0) return `D-${diff}`;
+            if (diff < 0) return `D+${Math.abs(diff)}`;
+            return 'D-DAY';
+        }
+
+        function diffDaysFromToday(dateStr) {
+            const today = new Date();
+            today.setHours(0, 0, 0, 0);
+            const target = new Date(dateStr);
+            target.setHours(0, 0, 0, 0);
+            return Math.round((today - target) / (1000 * 60 * 60 * 24));
+        }
+
+        function getActiveTicker() {
+            return document.getElementById('tickerCode').value.trim() || document.getElementById('stockTitle').innerText.trim();
+        }
+
+        function getTickerCurrencySymbol(ticker = '') {
+            return ticker.includes('.KS') || ticker.includes('.KQ') || ticker.includes('KRW') ? '₩' : '$';
+        }
+
+        function formatPriceByTicker(value, signed = false, ticker = getActiveTicker()) {
+            const numeric = Number(value || 0);
+            const symbol = getTickerCurrencySymbol(ticker);
+            const sign = numeric < 0 ? '-' : (signed && numeric > 0 ? '+' : '');
+            return `${sign}${symbol}${Math.abs(numeric).toLocaleString()}`;
+        }
+
+        function syncRangeWithData() {
+            if (stockData.length === 0) return alert("데이터를 먼저 동기화하세요.");
+            document.getElementById('waveStart').value = stockData[0].date;
+            document.getElementById('waveEnd').value = stockData[stockData.length - 1].date;
+        }
+
+        async function fetchStockData() {
+            const ticker = document.getElementById('tickerCode').value.trim();
+            if (!ticker) return;
+            document.getElementById('loading').style.display = 'flex';
+            try {
+                const res = await fetch(`${API_BASE}/history?ticker=${ticker}&start=2024-01-01&end=2026-12-31`);
+                const data = await res.json();
+                stockData = data.history;
+                document.getElementById('stockTitle').innerText = ticker;
+                renderChart(false);
+            } catch (e) { alert("Data Sync Error"); }
+            document.getElementById('loading').style.display = 'none';
+        }
+
+        function resetAnalysis() {
+            mugeuk = null;
+            document.getElementById('strategyContent').innerHTML = `<p class="text-[17px] font-bold italic text-slate-400 text-center py-20">데이터가 초기화되었습니다.</p>`;
+            document.getElementById('nodeSummary').innerHTML = "";
+            document.querySelector('#matrixTable tbody').innerHTML = "";
+            renderChart(false);
+        }
+
+        function runAnalysis() {
+            const sDate = document.getElementById('waveStart').value;
+            const eDate = document.getElementById('waveEnd').value;
+            const today = new Date();
+            today.setHours(0,0,0,0);
+
+            const rangeData = stockData.filter(d => d.date >= sDate && d.date <= eDate);
+            if (rangeData.length < 5) return alert("분석 범위의 데이터가 부족합니다.");
+
+            const maxVal = Math.max(...rangeData.map(d => d.high));
+            const minVal = Math.min(...rangeData.map(d => d.low));
+            const maxObj = rangeData.find(d => d.high === maxVal);
+            const minObj = rangeData.find(d => d.low === minVal);
+            const lastPrice = stockData[stockData.length - 1].close;
+
+            const isUp = new Date(minObj.date) < new Date(maxObj.date);
+            const waveStartObj = new Date(minObj.date) <= new Date(maxObj.date) ? minObj : maxObj;
+            const waveEndObj = waveStartObj === minObj ? maxObj : minObj;
+
+            const T_MS = Math.abs(new Date(waveEndObj.date) - new Date(waveStartObj.date));
+            const T_DAYS = Math.floor(T_MS / (1000 * 60 * 60 * 24));
+            const baseTime = new Date(waveEndObj.date).getTime();
+            
+            // 여백 극소화 (0.03)
+            const yMargin = (maxVal - minVal) * 0.03;
+            const fullRange = maxVal - minVal;
+            const currentPct = fullRange === 0 ? 0 : ((lastPrice - minVal) / fullRange) * 100;
+            const waveBasePrice = minVal;
+            const wavePeakPrice = maxVal;
+            const waveStartPrice = waveStartObj === minObj ? minVal : maxVal;
+            const waveEndPrice = waveEndObj === minObj ? minVal : maxVal;
+            const waveStartRole = waveStartObj === minObj ? 'BASE' : 'PEAK';
+            const waveEndRole = waveEndObj === minObj ? 'BASE' : 'PEAK';
+            const gapToPeak = wavePeakPrice - lastPrice;
+            const gapToBase = waveBasePrice - lastPrice;
+
+            mugeuk = {
+                trend: isUp ? 'UP' : 'DOWN',
+                p0: minVal, p25: minVal + (maxVal-minVal)*0.25, p50: minVal + (maxVal-minVal)*0.5, p75: minVal + (maxVal-minVal)*0.75, p100: maxVal,
+                lastPrice, yMin: minVal - yMargin, yMax: maxVal + yMargin,
+                T_DAYS,
+                currentPct: Math.max(0, Math.min(100, currentPct)),
+                gapToPeak,
+                gapToBase,
+                changeAmt: (isUp ? 1 : -1) * (maxVal - minVal),
+                changePct: (isUp ? 1 : -1) * ((maxVal - minVal) / (isUp ? minVal : maxVal) * 100),
+                anchor: { 
+                    start: waveStartObj.date, end: waveEndObj.date, 
+                    startPrice: waveStartPrice, endPrice: waveEndPrice,
+                    startRole: waveStartRole, endRole: waveEndRole
+                },
+                projections: [25, 50, 75, 100].map(p => {
+                    const targetDate = new Date(baseTime + T_MS * (p/100));
+                    const pricePct = isUp ? 100 - p : p;
+                    const targetPrice = minVal + ((maxVal - minVal) * (pricePct / 100));
+                    const priceGap = targetPrice - lastPrice;
+                    return { 
+                        pct: p,
+                        pricePct,
+                        mappingLabel: `${p}% time -> ${pricePct}% price`,
+                        d: targetDate.toISOString().split('T')[0], 
+                        todayDDay: Math.ceil((targetDate - today) / (1000 * 60 * 60 * 24)),
+                        targetPrice,
+                        priceGap,
+                        priceGapPct: lastPrice === 0 ? 0 : (priceGap / lastPrice * 100)
+                    };
+                })
+            };
+
+            renderMatrixTable();
+            updateUI();
+            renderChart(true);
+        }
+
+        function renderMatrixTable() {
+            const { p0, p100, lastPrice } = mugeuk;
+            const diff = p100 - p0;
+            const tableBody = document.querySelector('#matrixTable tbody');
+            tableBody.innerHTML = "";
+
+            let currentInserted = false;
+            for (let i = 16; i >= 0; i--) {
+                const pct = i * 6.25;
+                const price = p0 + (diff * (pct / 100));
+                
+                if(!currentInserted && lastPrice >= price) {
+                    tableBody.innerHTML += `
+                        <tr class="lvl-current">
+                            <td class="bg-green-600 text-white font-black italic">LTP</td>
+                            <td class="text-sm font-black text-green-700">${formatPriceByTicker(Math.round(lastPrice))}</td>
+                            <td class="text-[10px] rise-text">+${((lastPrice-p0)/p0*100).toFixed(1)}%</td>
+                            <td class="text-[10px] fall-text">${((lastPrice-p100)/p100*100).toFixed(1)}%</td>
+                            <td class="text-[10px] font-black text-green-600 uppercase">Current</td>
+                        </tr>`;
+                    currentInserted = true;
+                }
+
+                const isMajor = (pct % 25 === 0);
+                const gapAmt = price - lastPrice;
+                const gapPct = (gapAmt / lastPrice * 100).toFixed(1);
+                tableBody.innerHTML += `
+                    <tr class="${isMajor ? 'lvl-major' : ''}">
+                        <td class="font-black italic">${pct}%</td>
+                        <td class="text-sm font-black">${formatPriceByTicker(Math.round(price))}</td>
+                        <td class="text-[10px] rise-text">+${((price-p0)/p0*100).toFixed(1)}%</td>
+                        <td class="text-[10px] fall-text">${((price-p100)/p100*100).toFixed(1)}%</td>
+                        <td class="text-[10px] font-black ${gapAmt >= 0 ? 'text-red-500' : 'text-blue-500'}">
+                            ${formatPriceByTicker(Math.round(gapAmt), true)} (${gapPct}%)
+                        </td>
+                    </tr>`;
+            }
+        }
+
+        function updateUI() {
+            const { lastPrice, p0, p25, p50, p75, p100, projections, trend, T_DAYS, changePct, changeAmt, currentPct, gapToPeak, gapToBase } = mugeuk;
+            
+            const levels = [
+                {n: '0% (Base)', v: p0, desc: '파동의 기점. 이탈 시 추세 시나리오 완전 종료'},
+                {n: '25% (Ridge)', v: p25, desc: '1차 저항/지지 마디. 변동성 수렴의 경계'},
+                {n: '50% (Life-Line)', v: p50, desc: '파동의 생명선. 가격이 이 위에 있어야 에너지가 살아있음'},
+                {n: '75% (Accelerant)', v: p75, desc: '추세 가속화의 분기점. 강력한 매수/매도 압력 대치'},
+                {n: '100% (Peak)', v: p100, desc: '기존 파동의 정점. 1:1 대칭 도달 시 목표값'}
+            ];
+            const nearest = levels.reduce((prev, curr) => Math.abs(curr.v - lastPrice) < Math.abs(prev.v - lastPrice) ? curr : prev);
+            const nearestGap = nearest.v - lastPrice;
+            const baseDayGap = diffDaysFromToday(mugeuk.anchor.start);
+            const peakDayGap = diffDaysFromToday(mugeuk.anchor.end);
+
+            document.getElementById('statusBadge').innerText = `${trend} SYMMETRY MODE`;
+            document.getElementById('statusBadge').style.backgroundColor = trend === 'UP' ? '#ef4444' : '#3b82f6';
+            document.getElementById('periodDisplay').innerText = `${mugeuk.anchor.start} → ${mugeuk.anchor.end}`;
+            
+            const strategyHTML = `
+                <div class="space-y-6">
+                    <div class="p-6 bg-slate-900 rounded-3xl text-white shadow-xl">
+                        <p class="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">Wave Insight</p>
+                        <p class="text-[15px] font-bold leading-relaxed">
+                            본 파동은 <span class="text-blue-400">${T_DAYS}일</span>간 진행되었으며, 
+                            <span class="${trend === 'UP' ? 'text-red-400' : 'text-blue-400'}">${changePct.toFixed(1)}% (${formatPriceByTicker(Math.round(changeAmt), true)})</span>의 에너지를 소모했습니다.
+                            현재 가격은 ${nearest.n} 근방에서 지지/저항을 시험 중입니다.
+                        </p>
+                    </div>
+
+                    <div class="p-6 bg-white rounded-3xl border-2 border-slate-900 shadow-md">
+                        <p class="text-[10px] font-black text-red-500 uppercase tracking-widest mb-1">Nearest Level Info</p>
+                        <p class="text-xl font-black text-slate-900 mb-1">${nearest.n}</p>
+                        <p class="text-sm font-bold text-slate-500 italic">"${nearest.desc}"</p>
+                        <p class="text-sm font-black text-slate-800 mt-3">오늘가 ${formatPriceByTicker(Math.round(lastPrice))} 기준
+                            <span class="${nearestGap >= 0 ? 'text-red-500' : 'text-blue-500'}">
+                                ${formatPriceByTicker(Math.round(nearestGap), true)} (${(nearestGap / lastPrice * 100).toFixed(1)}%)
+                            </span>
+                        </p>
+                    </div>
+
+                    <div class="space-y-3">
+                        <div class="p-5 bg-white rounded-3xl border border-slate-200 shadow-sm space-y-1">
+                            <p class="text-[10px] font-black text-slate-400 uppercase tracking-widest">Wave Time Range</p>
+                            <p class="text-sm font-bold text-slate-700">WAVE START ${mugeuk.anchor.start} <span class="text-amber-500">${formatDDay(-baseDayGap)}</span></p>
+                            <p class="text-sm font-bold text-slate-700">WAVE END ${mugeuk.anchor.end} <span class="text-blue-500">${formatDDay(-peakDayGap)}</span></p>
+                            <p class="text-sm font-bold text-slate-500">미래 기간 대칭은 WAVE END 날짜를 시간 앵커로 사용</p>
+                            <p class="text-sm font-bold text-slate-500">START→END ${T_DAYS}일 | START 경과 ${baseDayGap}일 | END 경과 ${peakDayGap}일</p>
+                        </div>
+                        <div class="grid grid-cols-2 gap-3">
+                            <div class="p-5 bg-white rounded-3xl border border-slate-200 shadow-sm">
+                                <p class="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2">Today Price Context</p>
+                                <p class="text-2xl font-black text-slate-900">${formatPriceByTicker(Math.round(lastPrice))}</p>
+                                <p class="text-sm font-bold text-slate-500 mt-1">현재 위치 ${currentPct.toFixed(1)}% / Base→Peak 가격 범위 기준</p>
+                            </div>
+                            <div class="p-5 bg-white rounded-3xl border border-slate-200 shadow-sm space-y-1">
+                                <p class="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2">Price Gap From Today</p>
+                                <p class="text-sm font-bold text-slate-700">WAVE BASE ${formatPriceByTicker(Math.round(mugeuk.anchor.startPrice))}</p>
+                                <p class="text-sm font-bold text-slate-700">WAVE PEAK ${formatPriceByTicker(Math.round(mugeuk.anchor.endPrice))}</p>
+                                <p class="text-sm font-bold text-slate-700 pt-2">Peak까지
+                                    <span class="${gapToPeak >= 0 ? 'text-red-500' : 'text-blue-500'}">${formatPriceByTicker(Math.round(gapToPeak), true)} (${(gapToPeak / lastPrice * 100).toFixed(1)}%)</span>
+                                </p>
+                                <p class="text-sm font-bold text-slate-700">Base까지
+                                    <span class="${gapToBase >= 0 ? 'text-red-500' : 'text-blue-500'}">${formatPriceByTicker(Math.round(gapToBase), true)} (${(gapToBase / lastPrice * 100).toFixed(1)}%)</span>
+                                </p>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="space-y-3">
+                        <p class="text-xs font-black uppercase text-slate-400 tracking-widest italic">Pure Time Symmetry Countdown</p>
+                        <div class="grid grid-cols-1 gap-2">
+                            ${projections.map(pt => `
+                                <div class="flex justify-between items-center p-4 bg-white rounded-2xl border border-slate-100 shadow-sm gap-4">
+                                    <div>
+                                        <span class="font-black text-xs text-slate-400">T+${pt.pct}%</span>
+                                        <p class="text-[11px] font-bold text-slate-500 mt-1">${pt.mappingLabel}</p>
+                                        <p class="text-[11px] font-bold text-slate-800 mt-1">타겟가 ${formatPriceByTicker(Math.round(pt.targetPrice))}</p>
+                                        <p class="text-[11px] font-bold ${pt.priceGap >= 0 ? 'text-red-500' : 'text-blue-500'} mt-1">현재가 대비 ${formatPriceByTicker(Math.round(pt.priceGap), true)} (${pt.priceGapPct.toFixed(1)}%)</p>
+                                    </div>
+                                    <span class="font-black text-slate-800">${pt.d}</span>
+                                    <span class="font-black ${pt.todayDDay > 0 ? 'text-red-500' : 'text-slate-400'}">${formatDDay(pt.todayDDay)}</span>
+                                </div>
+                            `).join('')}
+                        </div>
+                    </div>
+                </div>
+            `;
+            document.getElementById('strategyContent').innerHTML = strategyHTML;
+            
+            document.getElementById('nodeSummary').innerHTML = ``;
+            document.getElementById('footerTimestamp').innerText = `Analysis V51.6 | ${new Date().toLocaleString()}`;
+        }
+
+        function renderChart(withPadding = false) {
+            const ctx = document.getElementById('mainChart').getContext('2d');
+            if (chart) chart.destroy();
+
+            const rawLabels = stockData.map(d => d.date);
+            let labels = [...rawLabels];
+            if (withPadding) {
+                const pad = Math.floor(rawLabels.length * 1.0);
+                const last = new Date(rawLabels[rawLabels.length - 1]);
+                for(let i=1; i<=pad; i++) {
+                    const next = new Date(last); next.setDate(last.getDate() + i);
+                    labels.push(next.toISOString().split('T')[0]);
+                }
+            }
+
+            const matrixPainter = {
+                id: 'matrixPainter',
+                afterDatasetsDraw: (chart) => {
+                    if (!mugeuk) return;
+                    const {ctx, scales: {x, y}, chartArea: {left, right, top, bottom}} = chart;
+
+                    const drawLineH = (val, color, width, dash = [], label = '') => {
+                        const yPos = y.getPixelForValue(val);
+                        if (yPos < top || yPos > bottom) return;
+                        ctx.save(); ctx.strokeStyle = color; ctx.setLineDash(dash); ctx.lineWidth = width;
+                        ctx.beginPath(); ctx.moveTo(left, yPos); ctx.lineTo(right, yPos); ctx.stroke();
+                        ctx.fillStyle = color; ctx.font = '900 12px Pretendard';
+                        ctx.fillText(`${label} [${formatPriceByTicker(Math.round(val))}]`, right + 10, yPos + 4);
+                        ctx.restore();
+                    };
+
+                    const drawLineV = (xVal, color, dash = []) => {
+                        const xPos = x.getPixelForValue(xVal);
+                        if (xPos < left || xPos > right) return null;
+                        ctx.save(); ctx.strokeStyle = color; ctx.setLineDash(dash); ctx.lineWidth = 1.5;
+                        ctx.beginPath(); ctx.moveTo(xPos, top); ctx.lineTo(xPos, bottom); ctx.stroke();
+                        ctx.restore();
+                        return xPos;
+                    };
+
+                    const { p0, p25, p50, p75, p100, lastPrice, projections, anchor, changeAmt, changePct, T_DAYS } = mugeuk;
+                    const todayLabel = new Date().toISOString().split('T')[0];
+
+                    // 1. Horizontal Matrix (Check showSub)
+                    drawLineH(p100, '#0f172a', 3, [], '100% PEAK');
+                    drawLineH(p75, '#64748b', 1.5, [8, 4], '75% RIDGE');
+                    drawLineH(p50, '#f59e0b', 3, [], '50% LIFE-LINE');
+                    drawLineH(p25, '#64748b', 1.5, [8, 4], '25% RIDGE');
+                    drawLineH(p0, '#0f172a', 3, [], '0% BASE');
+
+                    if(document.getElementById('showSub').checked) {
+                        for(let i=1; i<=15; i++) {
+                            const pct = i * 6.25; if(pct % 25 === 0) continue;
+                            const pVal = p0 + (p100-p0)*(pct/100);
+                            ctx.save(); ctx.strokeStyle = '#e2e8f0'; ctx.lineWidth = 0.8; ctx.setLineDash([3, 3]);
+                            const py = y.getPixelForValue(pVal);
+                            ctx.beginPath(); ctx.moveTo(left, py); ctx.lineTo(right, py); ctx.stroke();
+                            ctx.fillStyle = '#94a3b8'; ctx.font = '700 10px Pretendard';
+                            ctx.fillText(`${pct}% [${formatPriceByTicker(Math.round(pVal))}]`, right + 10, py + 3);
+                            ctx.restore();
+                        }
+                    }
+
+                    if(document.getElementById('showVector').checked) {
+                        drawLineH(lastPrice, '#22c55e', 2, [5, 2], 'LTP');
+                    }
+
+                    // 2. Vertical Anchors & Stats Bridge
+                    const xS = x.getPixelForValue(anchor.start);
+                    const xE = x.getPixelForValue(anchor.end);
+                    const xBase = drawLineV(anchor.start, '#0f172a', [4, 4]);
+                    const xPeak = drawLineV(anchor.end, '#0f172a', [4, 4]);
+
+                    ctx.save();
+                    ctx.fillStyle = '#0f172a'; ctx.textAlign = 'center'; ctx.font = '900 11px Pretendard';
+                    ctx.fillText('WAVE START', xBase, top - 35);
+                    ctx.fillText(anchor.start, xBase, top - 22);
+                    ctx.font = '900 10px Pretendard';
+                    ctx.fillText(`${anchor.startRole} ${formatPriceByTicker(Math.round(anchor.startPrice))}`, xBase, top - 10);
+                    ctx.font = '900 11px Pretendard';
+                    ctx.fillText('WAVE END', xPeak, top - 35);
+                    ctx.fillText(anchor.end, xPeak, top - 22);
+                    ctx.font = '900 10px Pretendard';
+                    ctx.fillText(`${anchor.endRole} ${formatPriceByTicker(Math.round(anchor.endPrice))}`, xPeak, top - 10);
+                    ctx.restore();
+
+                    // Wave Bridge Line
+                    ctx.save(); ctx.strokeStyle = '#0f172a'; ctx.lineWidth = 3;
+                    ctx.beginPath(); ctx.moveTo(xS, top - 55); ctx.lineTo(xE, top - 55); ctx.stroke();
+                    ctx.fillStyle = '#0f172a'; ctx.textAlign = 'center'; ctx.font = '900 14px Pretendard';
+                    const sign = changeAmt >= 0 ? '+' : '';
+                    ctx.fillText(`${T_DAYS}D | ${sign}${changePct.toFixed(1)}% | ${formatPriceByTicker(Math.round(changeAmt), true)}`, (xS+xE)/2, top - 65);
+                    ctx.restore();
+
+                    // 3. Diagonal Vector Line
+                    if(document.getElementById('showVector').checked) {
+                        ctx.save(); ctx.strokeStyle = '#ef4444'; ctx.lineWidth = 2.5; ctx.setLineDash([6, 3]);
+                        ctx.beginPath(); ctx.moveTo(xS, y.getPixelForValue(anchor.startPrice));
+                        ctx.lineTo(xE, y.getPixelForValue(anchor.endPrice)); ctx.stroke();
+                        ctx.restore();
+                    }
+
+                    // 4. Time Symmetry (Check showTime)
+                    if(document.getElementById('showTime').checked) {
+                        const xToday = drawLineV(todayLabel, '#22c55e', [2, 2]);
+                        ctx.save();
+                        ctx.fillStyle = '#22c55e'; ctx.textAlign = 'center'; ctx.font = '900 11px Pretendard';
+                        ctx.fillText('TODAY', xToday, top - 88);
+                        ctx.fillText(todayLabel, xToday, top - 75);
+                        ctx.font = '900 10px Pretendard';
+                        ctx.fillText(`${formatPriceByTicker(Math.round(lastPrice))}`, xToday, top - 62);
+                        ctx.restore();
+
+                        projections.forEach((pt, idx) => {
+                            const xp = x.getPixelForValue(pt.d);
+                            if(xp >= left && xp <= right) {
+                                const is100 = pt.pct === 100;
+                                const lineColor = pt.pct === 50 ? '#f59e0b' : (is100 ? '#3b82f6' : '#94a3b8');
+                                drawLineV(pt.d, lineColor, [6, 3]);
+
+                                ctx.save();
+                                ctx.fillStyle = lineColor;
+                                ctx.textAlign = 'center';
+                                ctx.font = '900 11px Pretendard';
+                                ctx.fillText(`T+${pt.pct}%`, xp, top - 62 + (idx % 2 === 0 ? 0 : 26));
+                                ctx.fillText(pt.d, xp, top - 49 + (idx % 2 === 0 ? 0 : 26));
+                                ctx.font = '900 10px Pretendard';
+                                ctx.fillText(`${pt.pricePct}% price · ${formatPriceByTicker(Math.round(pt.targetPrice))}`, xp, top - 36 + (idx % 2 === 0 ? 0 : 26));
+                                ctx.fillText(`${formatPriceByTicker(Math.round(pt.priceGap), true)} (${pt.priceGapPct.toFixed(1)}%)`, xp, top - 24 + (idx % 2 === 0 ? 0 : 26));
+                                ctx.restore();
+                            }
+                        });
+
+                        // Symmetry Bridge
+                        const xP100 = x.getPixelForValue(projections[3].d);
+                        if(xP100 > xE) {
+                            const extMid = (xE + xP100) / 2;
+                            ctx.save(); ctx.strokeStyle = '#3b82f6'; ctx.lineWidth = 3; ctx.setLineDash([4, 2]);
+                            ctx.beginPath(); ctx.moveTo(xE, top - 55); ctx.lineTo(xP100, top - 55); ctx.stroke();
+                            ctx.fillStyle = '#3b82f6'; ctx.textAlign = 'center'; ctx.font = '900 12px Pretendard';
+                            ctx.fillText(`TIME SYMMETRY EXTENSION`, extMid, top - 82);
+                            ctx.font = '900 11px Pretendard';
+                            ctx.fillText(`${projections[3].mappingLabel} | ${formatPriceByTicker(Math.round(projections[3].targetPrice))}`, extMid, top - 66);
+                            ctx.fillText(`${formatPriceByTicker(Math.round(projections[3].priceGap), true)} | ${projections[3].priceGapPct.toFixed(1)}%`, extMid, top - 52);
+                            ctx.restore();
+                        }
+                    }
+                }
+            };
+
+            const options = {
+                responsive: true, maintainAspectRatio: false,
+                layout: { padding: { top: 182, right: 180, bottom: 40, left: 30 } },
+                plugins: { legend: { display: false } },
+                scales: {
+                    x: { grid: { display: false }, ticks: { font: { size: 10, weight: 'bold' } } },
+                    y: { position: 'right', grid: { color: '#f8fafc' }, ticks: { display: true, font: { size: 10, weight: 'bold' }, color: '#64748b', callback: (value) => formatPriceByTicker(Number(value)) } }
+                }
+            };
+            if(mugeuk && withPadding) { 
+                options.scales.y.min = mugeuk.yMin; 
+                options.scales.y.max = mugeuk.yMax; 
+            }
+
+            chart = new Chart(ctx, {
+                type: 'line',
+                data: { labels, datasets: [{ data: stockData.map(d => d.close), borderColor: '#0f172a', borderWidth: 2.5, pointRadius: 0, tension: 0.1 }] },
+                options,
+                plugins: [matrixPainter]
+            });
+        }
+
+        function updateChart() { if(chart) chart.update(); }
+
+        function exportToPNG() {
+            document.getElementById('loading').style.display = 'flex';
+            htmlToImage.toPng(document.getElementById('captureArea'), { pixelRatio: 2, backgroundColor: '#ffffff' })
+                .then(url => {
+                    const a = document.createElement('a'); a.download = `MUGEUK_SYMMETRY_V51_6.png`;
+                    a.href = url; a.click();
+                    document.getElementById('loading').style.display = 'none';
+                });
+        }
+    </script>
+</body>
+</html>

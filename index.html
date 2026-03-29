@@ -28,15 +28,24 @@
 
         .benchmark-btn:hover { border-color: #2563eb; color: #2563eb; background: #eff6ff; transform: translateY(-1px); }
         
-        #intelTooltip { position: absolute; pointer-events: none; display: none; z-index: 1000; background: rgba(15, 23, 42, 0.95); color: white; padding: 16px; border-radius: 16px; box-shadow: 0 20px 40px rgba(0,0,0,0.4); min-width: 300px; backdrop-filter: blur(8px); border: 1px solid rgba(255,255,255,0.1); }
+        #intelTooltip { position: fixed; pointer-events: none; display: none; z-index: 1000; background: rgba(15, 23, 42, 0.95); color: white; padding: 16px; border-radius: 16px; box-shadow: 0 20px 40px rgba(0,0,0,0.4); min-width: 300px; max-width: min(380px, calc(100vw - 24px)); backdrop-filter: blur(8px); border: 1px solid rgba(255,255,255,0.1); }
         .pop-item { border-bottom: 1px solid rgba(255,255,255,0.1); padding: 8px 0; }
         .pop-item:last-child { border-bottom: none; }
+        .compare-item { border-bottom: 1px solid rgba(255,255,255,0.08); padding: 8px 0; }
+        .compare-item:last-child { border-bottom: none; }
         .section-header { cursor: pointer; user-select: none; }
         .event-type-option input:checked + label { background: #ffffff; color: #0f172a; box-shadow: 0 1px 3px rgba(15, 23, 42, 0.08); }
         .event-type-option input:focus-visible + label { outline: 2px solid #2563eb; outline-offset: 2px; }
         .panel-toggle { padding: 10px 14px; border-radius: 999px; background: #ffffff; border: 1px solid #cbd5e1; font-size: 10px; font-weight: 900; text-transform: uppercase; letter-spacing: 0.12em; color: #475569; transition: all 0.2s; }
         .panel-toggle:hover { background: #eff6ff; color: #2563eb; border-color: #93c5fd; }
         .search-result-card:hover { border-color: #2563eb; }
+        .quarter-toggle:checked + label { background: #0f172a; color: white; border-color: #0f172a; }
+        .quarter-card { background: white; border: 1px solid #e2e8f0; border-radius: 1.75rem; box-shadow: 0 12px 28px rgba(15, 23, 42, 0.06); }
+        .quarter-matrix { width: 100%; border-collapse: collapse; font-size: 11px; text-align: center; }
+        .quarter-matrix th { background: #f8fafc; border: 1px solid #e2e8f0; padding: 10px; font-weight: 900; color: #64748b; text-transform: uppercase; }
+        .quarter-matrix td { border: 1px solid #e2e8f0; padding: 9px; font-weight: 700; }
+        .quarter-major { background: #fffbeb; border-top: 2px solid #f59e0b; border-bottom: 2px solid #f59e0b; }
+        .quarter-current { background: #f0fdf4; border: 2px solid #22c55e; }
 
     </style>
 </head>
@@ -57,6 +66,13 @@
         <div id="ttEvents" class="pt-2 border-t border-white/10 space-y-1 hidden">
             <div class="text-[9px] font-black text-amber-400 uppercase mb-2 italic">Critical Events</div>
             <div id="ttEventList" class="space-y-2"></div>
+        </div>
+        <div id="ttCompare" class="pt-2 border-t border-white/10 space-y-1 hidden">
+            <div class="flex items-center justify-between gap-2 mb-2">
+                <div class="text-[9px] font-black text-sky-400 uppercase italic">2 Point Compare</div>
+                <div id="ttCompareRange" class="text-[8px] font-black text-white/40 uppercase"></div>
+            </div>
+            <div id="ttCompareList" class="space-y-1"></div>
         </div>
     </div>
 
@@ -96,37 +112,43 @@
                     </div>
                     <div id="comparisonTags" class="flex flex-wrap gap-2 min-h-[10px]"></div>
                     <div class="space-y-3 p-4 bg-slate-50 rounded-[2rem] border border-slate-100 shadow-inner">
-                        <div class="flex items-center justify-between gap-3">
+                        <div class="section-header flex items-center justify-between gap-3" onclick="toggleSection('chart-mode-panel')">
                             <span class="text-[9px] font-black text-slate-400 uppercase tracking-widest">Chart Mode</span>
-                            <span id="chartModeHint" class="text-[9px] font-black text-slate-300 uppercase">Line</span>
+                            <span id="chart-mode-panel-icon" class="text-[10px] text-slate-300">▼</span>
                         </div>
-                        <div class="flex gap-1 p-1 bg-white rounded-xl border border-slate-200">
-                            <button id="chartModeLineBtn" onclick="setChartMode('line')" class="flex-1 py-2 rounded-lg text-[10px] font-black transition-all">Line</button>
-                            <button id="chartModeCandleBtn" onclick="setChartMode('candle')" class="flex-1 py-2 rounded-lg text-[10px] font-black transition-all">Candle</button>
-                        </div>
-                        <div class="flex items-center justify-between gap-3 px-1">
-                            <div>
-                                <div class="text-[9px] font-black text-slate-400 uppercase tracking-widest">Volume Overlay</div>
-                                <div class="text-[9px] font-bold text-slate-300 uppercase">Single Asset Only</div>
+                        <div id="chart-mode-panel" class="hidden space-y-3">
+                            <div class="flex items-center justify-between gap-3">
+                                <span class="text-[9px] font-black text-slate-400 uppercase tracking-widest">Mode</span>
+                                <span id="chartModeHint" class="text-[9px] font-black text-slate-300 uppercase">Line</span>
                             </div>
-                            <button id="volumeToggleBtn" onclick="toggleVolumeOverlay()" class="px-3 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all">Off</button>
-                        </div>
-                        <div class="grid grid-cols-[minmax(0,1fr)_auto] gap-2 items-center">
-                            <input id="guideLineValue" type="number" step="0.1" placeholder="Horizontal line value" class="w-full text-center text-[10px] font-black bg-white border border-slate-200 rounded-xl p-3 outline-none text-slate-700">
-                            <button onclick="addGuideLine()" class="px-4 py-3 rounded-xl bg-slate-900 text-white text-[10px] font-black uppercase tracking-widest hover:bg-black transition-all">+ Line</button>
-                        </div>
-                        <div class="grid grid-cols-[92px_minmax(0,1fr)] gap-2 items-center">
-                            <input id="guideLineColor" type="color" value="#0f172a" class="w-full h-11 bg-white border border-slate-200 rounded-xl p-1 cursor-pointer">
-                            <input id="guideLineNote" type="text" placeholder="Line memo" class="w-full text-[10px] font-black bg-white border border-slate-200 rounded-xl p-3 outline-none text-slate-700 uppercase tracking-wide">
-                        </div>
-                        <div class="flex items-center justify-between gap-3 px-1">
-                            <div>
-                                <div class="text-[9px] font-black text-slate-400 uppercase tracking-widest">Draw On Chart</div>
-                                <div id="guideLineDrawHint" class="text-[9px] font-bold text-slate-300 uppercase">Click Chart To Add</div>
+                            <div class="flex gap-1 p-1 bg-white rounded-xl border border-slate-200">
+                                <button id="chartModeLineBtn" onclick="setChartMode('line')" class="flex-1 py-2 rounded-lg text-[10px] font-black transition-all">Line</button>
+                                <button id="chartModeCandleBtn" onclick="setChartMode('candle')" class="flex-1 py-2 rounded-lg text-[10px] font-black transition-all">Candle</button>
                             </div>
-                            <button id="guideLineDrawBtn" onclick="toggleGuideLineDrawMode()" class="px-3 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all">Off</button>
+                            <div class="flex items-center justify-between gap-3 px-1">
+                                <div>
+                                    <div class="text-[9px] font-black text-slate-400 uppercase tracking-widest">Volume Overlay</div>
+                                    <div class="text-[9px] font-bold text-slate-300 uppercase">Single Asset Only</div>
+                                </div>
+                                <button id="volumeToggleBtn" onclick="toggleVolumeOverlay()" class="px-3 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all">Off</button>
+                            </div>
+                            <div class="grid grid-cols-[minmax(0,1fr)_auto] gap-2 items-center">
+                                <input id="guideLineValue" type="number" step="0.1" placeholder="Horizontal line value" class="w-full text-center text-[10px] font-black bg-white border border-slate-200 rounded-xl p-3 outline-none text-slate-700">
+                                <button onclick="addGuideLine()" class="px-4 py-3 rounded-xl bg-slate-900 text-white text-[10px] font-black uppercase tracking-widest hover:bg-black transition-all">+ Line</button>
+                            </div>
+                            <div class="grid grid-cols-[92px_minmax(0,1fr)] gap-2 items-center">
+                                <input id="guideLineColor" type="color" value="#0f172a" class="w-full h-11 bg-white border border-slate-200 rounded-xl p-1 cursor-pointer">
+                                <input id="guideLineNote" type="text" placeholder="Line memo" class="w-full text-[10px] font-black bg-white border border-slate-200 rounded-xl p-3 outline-none text-slate-700 uppercase tracking-wide">
+                            </div>
+                            <div class="flex items-center justify-between gap-3 px-1">
+                                <div>
+                                    <div class="text-[9px] font-black text-slate-400 uppercase tracking-widest">Draw On Chart</div>
+                                    <div id="guideLineDrawHint" class="text-[9px] font-bold text-slate-300 uppercase">Click Chart To Add</div>
+                                </div>
+                                <button id="guideLineDrawBtn" onclick="toggleGuideLineDrawMode()" class="px-3 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all">Off</button>
+                            </div>
+                            <div id="guideLineList" class="space-y-2"></div>
                         </div>
-                        <div id="guideLineList" class="space-y-2"></div>
                     </div>
                     <div class="pt-4 border-t border-slate-200 space-y-4">
                         <div class="grid grid-cols-2 gap-3 text-[10px] font-black text-slate-400 uppercase tracking-widest">
@@ -207,6 +229,42 @@
                     </div>
                 </div>
                 <div id="chartContainer" class="relative h-[550px] mb-20 scroll-mt-20"><canvas id="mainChart"></canvas></div>
+                <div id="quarterSection" class="hidden mb-20 space-y-8">
+                    <div class="flex items-center justify-between border-b-[6px] border-slate-900 pb-4">
+                        <div>
+                            <div class="text-[10px] font-black uppercase tracking-[0.3em] text-slate-400 italic">Quarter Symmetry Module</div>
+                            <div class="text-3xl font-black italic tracking-tighter text-slate-900 uppercase">4등분 매매법</div>
+                        </div>
+                        <div id="quarterPeriod" class="text-sm font-black text-slate-400 uppercase tracking-widest">--</div>
+                    </div>
+                    <div class="grid grid-cols-[1.2fr_1fr] gap-8">
+                        <div id="quarterMatrixCard" class="quarter-card p-6 overflow-hidden">
+                            <div class="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-4">Price Matrix</div>
+                            <table class="quarter-matrix" id="quarterMatrixTable">
+                                <thead>
+                                    <tr>
+                                        <th>Level</th>
+                                        <th>Price</th>
+                                        <th>Rise</th>
+                                        <th>Drawdown</th>
+                                        <th>Gap</th>
+                                    </tr>
+                                </thead>
+                                <tbody></tbody>
+                            </table>
+                        </div>
+                        <div class="space-y-5">
+                            <div id="quarterWaveSummary" class="quarter-card p-6"></div>
+                            <div id="quarterNearestCard" class="quarter-card p-6"></div>
+                            <div id="quarterTimeCard" class="quarter-card p-6"></div>
+                            <div id="quarterPriceCard" class="quarter-card p-6"></div>
+                        </div>
+                    </div>
+                    <div id="quarterCountdownCard" class="quarter-card p-6">
+                        <div class="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-4">Pure Time Symmetry Countdown</div>
+                        <div id="quarterCountdown" class="space-y-3"></div>
+                    </div>
+                </div>
                 <div id="eventGrid" class="grid grid-cols-2 gap-8"></div>
                 <div class="absolute bottom-10 left-[60px] right-[60px] flex justify-between items-center text-[10px] text-slate-300 font-bold tracking-[0.4em] border-t pt-8 uppercase">
                     <span>Research Desk OS Core Framework V39</span>
@@ -217,6 +275,39 @@
 
         <!-- 3. 우측 데이터베이스 -->
         <div id="rightPanel" class="w-full xl:w-[400px] space-y-6 sticky top-6 h-fit font-bold transition-all">
+            <div class="bg-white p-6 rounded-[2.5rem] shadow-xl border border-slate-200 overflow-hidden">
+                <div class="section-header flex justify-between items-center mb-4" onclick="toggleSection('quarter-hub')">
+                    <h3 class="text-xs font-black tracking-widest uppercase italic text-slate-400">Quarter Symmetry Hub</h3>
+                    <span id="quarter-hub-icon" class="text-[10px] text-slate-300">▲</span>
+                </div>
+                <div id="quarter-hub" class="space-y-4">
+                    <div class="flex items-center justify-between gap-3 bg-slate-50 rounded-[1.5rem] p-4 border border-slate-100">
+                        <div>
+                            <div class="text-[10px] font-black text-slate-500 uppercase tracking-widest">Optional Overlay</div>
+                            <div id="quarterModeHint" class="text-[9px] font-bold text-slate-300 uppercase">Single Asset Only</div>
+                        </div>
+                        <div class="event-type-option">
+                            <input type="checkbox" id="quarterEnabled" class="quarter-toggle sr-only" onchange="toggleQuarterSymmetry(this.checked)">
+                            <label for="quarterEnabled" class="block px-4 py-2 rounded-xl border border-slate-200 text-[10px] font-black uppercase tracking-widest text-slate-500 cursor-pointer transition-all">Enable</label>
+                        </div>
+                    </div>
+                    <div class="grid grid-cols-2 gap-3 text-[10px] font-black text-slate-400 uppercase tracking-widest">
+                        <div>Wave Start<input id="quarterWaveStart" type="date" class="w-full border-b-2 p-1 font-bold bg-transparent outline-none focus:border-blue-500"></div>
+                        <div>Wave End<input id="quarterWaveEnd" type="date" class="w-full border-b-2 p-1 font-bold bg-transparent outline-none focus:border-blue-500"></div>
+                    </div>
+                    <div class="bg-slate-50 p-4 rounded-[1.5rem] border border-slate-100 space-y-3">
+                        <div class="text-[10px] font-black text-slate-500 uppercase tracking-widest">Display Config</div>
+                        <label class="flex items-center gap-2 text-[10px] font-bold text-slate-600"><input type="checkbox" id="quarterShowSub" checked onchange="setQuarterOption('showSub', this.checked)"><span>16-Matrix 미세선 & 가격</span></label>
+                        <label class="flex items-center gap-2 text-[10px] font-bold text-slate-600"><input type="checkbox" id="quarterShowTime" checked onchange="setQuarterOption('showTime', this.checked)"><span>시간 대칭(Time Symmetry)</span></label>
+                        <label class="flex items-center gap-2 text-[10px] font-bold text-slate-600"><input type="checkbox" id="quarterShowVector" checked onchange="setQuarterOption('showVector', this.checked)"><span>현재가(LTP) & 벡터 라인</span></label>
+                    </div>
+                    <div class="grid grid-cols-2 gap-3">
+                        <button onclick="syncQuarterRangeWithData()" class="w-full text-[10px] font-black text-blue-600 bg-white border py-3 rounded-xl uppercase tracking-widest">Auto Range</button>
+                        <button onclick="runQuarterSymmetry()" class="w-full text-[10px] font-black text-white bg-slate-900 py-3 rounded-xl uppercase tracking-widest">Run Module</button>
+                    </div>
+                </div>
+            </div>
+
             <div class="bg-white p-6 rounded-[2.5rem] shadow-xl border border-slate-200">
                 <div class="section-header flex justify-between items-center mb-4" onclick="toggleSection('db-section')">
                     <h3 class="text-xs font-black tracking-widest uppercase italic text-slate-400">Asset Database</h3>
@@ -245,7 +336,9 @@
                         <div class="w-3 h-8 bg-white rounded-full"></div>
                         <h2 class="text-2xl font-black italic tracking-tighter uppercase leading-none">OS V39</h2>
                     </div>
-                    <div class="flex gap-1">
+                    <div class="flex gap-1 flex-wrap justify-end">
+                        <button onclick="triggerUndoRecovery()" class="px-3 py-1.5 bg-white/15 text-white rounded-lg text-[10px] font-black uppercase hover:bg-white/20">Undo</button>
+                        <button onclick="triggerRestoreRecovery()" class="px-3 py-1.5 bg-white/15 text-white rounded-lg text-[10px] font-black uppercase hover:bg-white/20">Restore</button>
                         <button onclick="exportBackup()" class="px-3 py-1.5 bg-slate-800 text-white rounded-lg text-[10px] font-black uppercase">Backup</button>
                         <button onclick="resetWorkspace()" class="px-3 py-1.5 bg-red-500 text-white rounded-lg text-[10px] font-black uppercase hover:bg-red-600">Reset</button>
                     </div>
@@ -260,6 +353,7 @@
                 <div id="set-section" class="space-y-2 max-h-[250px] overflow-y-auto custom-scroll pr-1"></div>
                 <button onclick="saveCombinedSet()" class="w-full mt-3 bg-white/20 text-white py-2 rounded-xl font-black text-[10px] hover:bg-white/30 uppercase tracking-widest italic transition-all">💾 Snapshot Current Hub</button>
             </div>
+
         </div>
     </div>
 
@@ -270,6 +364,9 @@
         const TYPE_LABELS = { def: '기본', pos: '호재', neg: '악재' };
         
         let chart, compareTickers = [], alertTickers = {}, globalStockData = {}, activeHighlight = null, hoverPoint = null, chartMode = 'line', guideLines = [], showVolume = false, guideLineDrawMode = false, guideLineDraft = null, editingEventId = null;
+        let quarterState = null;
+        const quarterOptions = { enabled: false, showSub: true, showTime: true, showVector: true };
+        let pinnedPoints = [], pinnedTooltipAnchor = null;
         let allTickerData = JSON.parse(localStorage.getItem('rd_v39_db')) || {};
         let savedCombinedSets = JSON.parse(localStorage.getItem('rd_v39_combined')) || [];
         const DEFAULT_BENCHMARKS = [
@@ -279,6 +376,7 @@
         ];
         let benchmarkList = (JSON.parse(localStorage.getItem('rd_v39_bench')) || DEFAULT_BENCHMARKS).map(item => ({ ...item, m: item.m || '' }));
         let flagHitAreas = [];
+        const GRAPH_TIMELINE_META_KEY = "rd_v39_meta";
 
         function init() {
             const today = new Date();
@@ -288,9 +386,28 @@
             document.getElementById('startDate').value = fmt(lastYear);
             document.getElementById('eventDate').value = fmt(today);
             normalizeDataStore();
-            renderBenchmarks(); renderHistoryList(); renderUnifiedSearch(); renderGlobalEvents(); renderCombinedList(); updateHubUI(); renderGuideLineUI(); updateGuideLineDrawUI(); updateChartModeUI(); updateVolumeUI();
+            renderBenchmarks(); renderHistoryList(); renderUnifiedSearch(); renderGlobalEvents(); renderCombinedList(); updateHubUI(); renderGuideLineUI(); updateGuideLineDrawUI(); updateChartModeUI(); updateVolumeUI(); updateQuarterHubUI();
         }
 
+
+        function notifyParentTimelineChange(reason = "graph-structural") {
+            try {
+                window.parent?.rdNotifyGraphTimelineChanged?.(reason);
+            } catch (err) {
+                console.warn("parent graph sync notify failed", err);
+            }
+        }
+
+        function persistGraphTimelineMeta(notifyReason = "graph-structural") {
+            const eventCount = Object.values(allTickerData).reduce((sum, entry) => sum + ((entry?.events || []).length), 0);
+            localStorage.setItem(GRAPH_TIMELINE_META_KEY, JSON.stringify({
+                updatedAt: Date.now(),
+                eventCount,
+                setCount: savedCombinedSets.length,
+                benchmarkCount: benchmarkList.length
+            }));
+            if (notifyReason) notifyParentTimelineChange(notifyReason);
+        }
 
         function normalizeDataStore() {
             Object.values(allTickerData).forEach(entry => {
@@ -316,6 +433,206 @@
                 price: close,
                 volume: Number(point.volume ?? 0)
             };
+        }
+
+        function requestParentRecoveryAction(action, source = 'graph-change') {
+            try {
+                if (!window.parent || window.parent === window) return false;
+                if (action === 'capture' && typeof window.parent.rdCaptureRecoveryPoint === 'function') {
+                    window.parent.rdCaptureRecoveryPoint(source);
+                    return true;
+                }
+                if (action === 'undo' && typeof window.parent.rdUndoLastChange === 'function') {
+                    window.parent.rdUndoLastChange();
+                    return true;
+                }
+                if (action === 'restore' && typeof window.parent.rdRestoreRecentSnapshot === 'function') {
+                    window.parent.rdRestoreRecentSnapshot();
+                    return true;
+                }
+            } catch (err) {
+                console.warn('parent recovery action failed', err);
+            }
+            return false;
+        }
+
+        function triggerUndoRecovery() {
+            if (!requestParentRecoveryAction('undo')) {
+                alert('Undo recovery is available from the main Research Desk shell.');
+            }
+        }
+
+        function triggerRestoreRecovery() {
+            if (!requestParentRecoveryAction('restore')) {
+                alert('Snapshot restore is available from the main Research Desk shell.');
+            }
+        }
+
+        function captureRecoveryPoint(source = 'graph-change') {
+            return requestParentRecoveryAction('capture', source);
+        }
+
+        function getTickerCurrencySymbol(ticker = '') {
+            return ticker.includes('.KS') || ticker.includes('.KQ') || ticker.includes('KRW') ? '₩' : '$';
+        }
+
+        function formatPriceByTicker(ticker, value, signed = false) {
+            const numeric = Number(value || 0);
+            const symbol = getTickerCurrencySymbol(ticker);
+            const sign = numeric < 0 ? '-' : (signed && numeric > 0 ? '+' : '');
+            return `${sign}${symbol}${Math.abs(numeric).toLocaleString()}`;
+        }
+
+        function formatCurrencyByTicker(ticker, value) {
+            return formatPriceByTicker(ticker, value, false);
+        }
+
+        function getPricePointByIndex(ticker, index) {
+            return globalStockData[ticker]?.[index] || null;
+        }
+
+        function syncHoverPointFromSelection() {
+            if (!pinnedPoints.length) {
+                hoverPoint = null;
+                return;
+            }
+            const activePoint = pinnedPoints[pinnedPoints.length - 1];
+            const datasetIndex = compareTickers.findIndex(ticker => ticker === activePoint.ticker);
+            hoverPoint = datasetIndex >= 0 ? { datasetIndex, index: activePoint.index } : null;
+        }
+
+        function positionIntelTooltip(clientX, clientY) {
+            const tip = document.getElementById('intelTooltip');
+            if (!tip) return;
+            const offset = 18;
+            const margin = 12;
+            const rect = tip.getBoundingClientRect();
+            let left = clientX + offset;
+            let top = clientY - 20;
+            if (left + rect.width > window.innerWidth - margin) left = clientX - rect.width - offset;
+            if (left < margin) left = margin;
+            if (top + rect.height > window.innerHeight - margin) top = window.innerHeight - rect.height - margin;
+            if (top < margin) top = Math.min(window.innerHeight - rect.height - margin, clientY + offset);
+            if (top < margin) top = margin;
+            tip.style.left = `${left}px`;
+            tip.style.top = `${top}px`;
+        }
+
+        function renderTooltipContentByIndex(idx) {
+            if (idx == null || idx < 0) return;
+            const targetDate = chart?.data?.labels?.[idx];
+            if (!targetDate) return;
+            const effectiveChartMode = getEffectiveChartMode();
+            const showVolumeOverlayActive = canShowVolumeOverlay() && showVolume;
+            const merged = getSortedMergedEvents();
+            document.getElementById('ttDate').innerText = targetDate;
+
+            const priceList = document.getElementById('ttPrices');
+            priceList.innerHTML = '';
+            compareTickers.forEach((t, i) => {
+                const d = getPricePointByIndex(t, idx);
+                if (!d) return;
+                const color = COLORS[i % COLORS.length];
+                const sym = t.includes('.KS') || t.includes('.KQ') || t.includes('KRW') ? '₩' : '$';
+                priceList.innerHTML += `
+                    <div class="flex justify-between items-center text-[10px]">
+                        <div class="flex items-center gap-1.5 font-black">
+                            <div class="w-1.5 h-1.5 rounded-full" style="background:${color}"></div>
+                            <span style="color:${color}">${t.replace(/\..*/,'')}</span>
+                        </div>
+                        <div class="text-right">
+                            <div class="font-black text-white">${effectiveChartMode === 'candle' ? `O ${sym}${d.open.toLocaleString()} | H ${sym}${d.high.toLocaleString()} | L ${sym}${d.low.toLocaleString()} | C ${sym}${d.close.toLocaleString()}` : `${sym}${d.price.toLocaleString()}`}</div>
+                            <div class="text-[8px] font-bold ${d.diff_today >= 0 ? 'text-green-400' : 'text-red-400'}">
+                                ${d.diff_today >= 0 ? '▲' : '▼'}${sym}${Math.abs(d.diff_today).toLocaleString()} (${d.change_today}%)
+                            </div>
+                            ${showVolumeOverlayActive ? `<div class="text-[8px] font-bold text-slate-400 uppercase">Vol ${Number(d.volume || 0).toLocaleString()}</div>` : ''}
+                        </div>
+                    </div>`;
+            });
+
+            const dayEvents = merged.filter(ev => ev.date === targetDate);
+            const evSec = document.getElementById('ttEvents');
+            if (dayEvents.length > 0) {
+                evSec.classList.remove('hidden');
+                const evList = document.getElementById('ttEventList');
+                evList.innerHTML = '';
+                dayEvents.forEach(ev => {
+                    const tickerEventNumber = getTickerEventNumber(ev);
+                    evList.innerHTML += `
+                        <div class="pop-item">
+                            <div class="flex items-center gap-2 mb-1">
+                                <span class="w-4 h-4 flex items-center justify-center bg-white text-slate-900 rounded-full text-[8px] font-black">${tickerEventNumber}</span>
+                                <span class="text-[8px] font-black px-2 py-0.5 rounded-full" style="background:${TYPE_COLORS[ev.type]}">${TYPE_LABELS[ev.type]}</span>
+                                <span class="text-[8px] text-white/40 font-bold uppercase">${ev.ticker}</span>
+                            </div>
+                            <div class="text-[11px] font-black text-slate-100">${ev.title}</div>
+                        </div>`;
+                });
+            } else {
+                evSec.classList.add('hidden');
+            }
+
+            const compareSec = document.getElementById('ttCompare');
+            if (pinnedPoints.length === 2) {
+                const [a, b] = [...pinnedPoints].sort((left, right) => left.index - right.index);
+                document.getElementById('ttCompareRange').innerText = `${a.date} → ${b.date}`;
+                const compareList = document.getElementById('ttCompareList');
+                compareList.innerHTML = '';
+                compareTickers.forEach((ticker, i) => {
+                    const fromPoint = getPricePointByIndex(ticker, a.index);
+                    const toPoint = getPricePointByIndex(ticker, b.index);
+                    if (!fromPoint || !toPoint) return;
+                    const amount = Number(toPoint.price) - Number(fromPoint.price);
+                    const pct = Number(fromPoint.price) ? (amount / Number(fromPoint.price)) * 100 : 0;
+                    const color = COLORS[i % COLORS.length];
+                    compareList.innerHTML += `
+                        <div class="compare-item flex items-center justify-between gap-3 text-[10px]">
+                            <div class="flex items-center gap-1.5 font-black">
+                                <div class="w-1.5 h-1.5 rounded-full" style="background:${color}"></div>
+                                <span style="color:${color}">${ticker.replace(/\..*/,'')}</span>
+                            </div>
+                            <div class="text-right">
+                                <div class="font-black ${amount >= 0 ? 'text-green-400' : 'text-red-400'}">${amount >= 0 ? '▲' : '▼'} ${formatCurrencyByTicker(ticker, amount)}</div>
+                                <div class="text-[8px] font-bold ${pct >= 0 ? 'text-green-300' : 'text-red-300'}">${pct >= 0 ? '+' : ''}${pct.toFixed(2)}%</div>
+                            </div>
+                        </div>`;
+                });
+                compareSec.classList.remove('hidden');
+            } else {
+                compareSec.classList.add('hidden');
+            }
+        }
+
+        function showTooltipAtIndex(idx, clientX, clientY) {
+            const tip = document.getElementById('intelTooltip');
+            if (!tip || idx == null || idx < 0) return;
+            tip.style.display = 'block';
+            renderTooltipContentByIndex(idx);
+            positionIntelTooltip(clientX, clientY);
+        }
+
+        function hideIntelTooltip() {
+            const tip = document.getElementById('intelTooltip');
+            if (tip) tip.style.display = 'none';
+        }
+
+        function togglePinnedPoint(selection, clientX, clientY) {
+            const existingIndex = pinnedPoints.findIndex(point => point.date === selection.date);
+            if (existingIndex >= 0) {
+                pinnedPoints.splice(existingIndex, 1);
+            } else if (pinnedPoints.length >= 2) {
+                pinnedPoints = [pinnedPoints[1], selection];
+            } else {
+                pinnedPoints.push(selection);
+            }
+            pinnedTooltipAnchor = pinnedPoints.length ? { clientX, clientY } : null;
+            syncHoverPointFromSelection();
+            if (pinnedPoints.length) {
+                const activePoint = pinnedPoints[pinnedPoints.length - 1];
+                showTooltipAtIndex(activePoint.index, clientX, clientY);
+            } else {
+                hideIntelTooltip();
+            }
         }
 
         function toggleSidePanel(side) {
@@ -459,13 +776,420 @@
             });
         }
 
+        function formatQuarterDDay(diff) {
+            if (diff > 0) return `D-${diff}`;
+            if (diff < 0) return `D+${Math.abs(diff)}`;
+            return 'D-DAY';
+        }
+
+        function updateQuarterHubUI() {
+            const hint = document.getElementById('quarterModeHint');
+            if (!hint) return;
+            if (compareTickers.length !== 1) hint.innerText = 'Single Asset Only';
+            else if (!quarterOptions.enabled) hint.innerText = 'Optional Overlay';
+            else hint.innerText = quarterState ? 'Module Active' : 'Ready To Run';
+        }
+
+        function setQuarterOption(key, enabled) {
+            if (!(key in quarterOptions)) return;
+            quarterOptions[key] = enabled;
+            renderQuarterSection();
+            if (chart) renderChart();
+        }
+
+        function toggleQuarterSymmetry(enabled) {
+            quarterOptions.enabled = enabled;
+            if (!enabled) {
+                quarterState = null;
+                renderQuarterSection();
+                if (chart) renderChart();
+                updateQuarterHubUI();
+                return;
+            }
+            updateQuarterHubUI();
+            if (compareTickers.length === 1 && globalStockData[compareTickers[0]]?.length) {
+                syncQuarterRangeWithData();
+                runQuarterSymmetry();
+            }
+        }
+
+        function syncQuarterRangeWithData() {
+            if (compareTickers.length !== 1) return;
+            const ticker = compareTickers[0];
+            const points = globalStockData[ticker] || [];
+            if (!points.length) return;
+            document.getElementById('quarterWaveStart').value = points[0].date;
+            document.getElementById('quarterWaveEnd').value = points[points.length - 1].date;
+        }
+
+        function analyzeQuarterSymmetry(points, startDate, endDate) {
+            const rangeData = points.filter(point => point.date >= startDate && point.date <= endDate);
+            if (rangeData.length < 5) return null;
+
+            const maxVal = Math.max(...rangeData.map(point => point.high));
+            const minVal = Math.min(...rangeData.map(point => point.low));
+            const maxObj = rangeData.find(point => point.high === maxVal);
+            const minObj = rangeData.find(point => point.low === minVal);
+            const lastPrice = points[points.length - 1].close;
+            const isUp = new Date(minObj.date) < new Date(maxObj.date);
+            const waveStartObj = new Date(minObj.date) <= new Date(maxObj.date) ? minObj : maxObj;
+            const waveEndObj = waveStartObj === minObj ? maxObj : minObj;
+            const T_MS = Math.abs(new Date(waveEndObj.date) - new Date(waveStartObj.date));
+            const T_DAYS = Math.floor(T_MS / (1000 * 60 * 60 * 24));
+            const yMargin = (maxVal - minVal) * 0.03;
+            const fullRange = maxVal - minVal;
+            const currentPct = fullRange === 0 ? 0 : ((lastPrice - minVal) / fullRange) * 100;
+            const waveBasePrice = minVal;
+            const wavePeakPrice = maxVal;
+            const waveStartPrice = waveStartObj === minObj ? minVal : maxVal;
+            const waveEndPrice = waveEndObj === minObj ? minVal : maxVal;
+            const waveStartRole = waveStartObj === minObj ? 'BASE' : 'PEAK';
+            const waveEndRole = waveEndObj === minObj ? 'BASE' : 'PEAK';
+            const today = new Date();
+            today.setHours(0, 0, 0, 0);
+            const baseTime = new Date(waveEndObj.date).getTime();
+            const gapToPeak = wavePeakPrice - lastPrice;
+            const gapToBase = waveBasePrice - lastPrice;
+
+            const projections = [25, 50, 75, 100].map((pct) => {
+                const targetDate = new Date(baseTime + T_MS * (pct / 100));
+                const pricePct = isUp ? 100 - pct : pct;
+                const targetPrice = minVal + ((maxVal - minVal) * (pricePct / 100));
+                const priceGap = targetPrice - lastPrice;
+                return {
+                    pct,
+                    pricePct,
+                    mappingLabel: `${pct}% time -> ${pricePct}% price`,
+                    d: targetDate.toISOString().split('T')[0],
+                    todayDDay: Math.ceil((targetDate - today) / (1000 * 60 * 60 * 24)),
+                    targetPrice,
+                    priceGap,
+                    priceGapPct: lastPrice === 0 ? 0 : (priceGap / lastPrice * 100)
+                };
+            });
+
+            return {
+                ticker: compareTickers[0],
+                trend: isUp ? 'UP' : 'DOWN',
+                timeRange: { start: waveStartObj.date, end: waveEndObj.date, days: T_DAYS },
+                priceRange: {
+                    base: waveBasePrice,
+                    peak: wavePeakPrice,
+                    p25: minVal + (maxVal - minVal) * 0.25,
+                    p50: minVal + (maxVal - minVal) * 0.5,
+                    p75: minVal + (maxVal - minVal) * 0.75
+                },
+                anchors: {
+                    start: waveStartObj.date,
+                    end: waveEndObj.date,
+                    startPrice: waveStartPrice,
+                    endPrice: waveEndPrice,
+                    startRole: waveStartRole,
+                    endRole: waveEndRole
+                },
+                lastPrice,
+                currentPct: Math.max(0, Math.min(100, currentPct)),
+                gapToPeak,
+                gapToBase,
+                yMin: minVal - yMargin,
+                yMax: maxVal + yMargin,
+                changeAmt: (isUp ? 1 : -1) * (maxVal - minVal),
+                changePct: (isUp ? 1 : -1) * ((maxVal - minVal) / (isUp ? minVal : maxVal) * 100),
+                projections
+            };
+        }
+
+        function renderQuarterMatrix() {
+            const body = document.querySelector('#quarterMatrixTable tbody');
+            if (!body) return;
+            if (!quarterState) {
+                body.innerHTML = '';
+                return;
+            }
+            const ticker = quarterState.ticker;
+            const { priceRange, lastPrice } = quarterState;
+            const diff = priceRange.peak - priceRange.base;
+            body.innerHTML = '';
+            let inserted = false;
+            for (let i = 16; i >= 0; i--) {
+                const pct = i * 6.25;
+                const price = priceRange.base + (diff * (pct / 100));
+                if (!inserted && lastPrice >= price) {
+                    body.innerHTML += `<tr class="quarter-current"><td>LTP</td><td>${formatPriceByTicker(ticker, Math.round(lastPrice))}</td><td>+${((lastPrice - priceRange.base) / priceRange.base * 100).toFixed(1)}%</td><td>${((lastPrice - priceRange.peak) / priceRange.peak * 100).toFixed(1)}%</td><td>Current</td></tr>`;
+                    inserted = true;
+                }
+                const gap = price - lastPrice;
+                body.innerHTML += `<tr class="${pct % 25 === 0 ? 'quarter-major' : ''}"><td>${pct}%</td><td>${formatPriceByTicker(ticker, Math.round(price))}</td><td>+${((price - priceRange.base) / priceRange.base * 100).toFixed(1)}%</td><td>${((price - priceRange.peak) / priceRange.peak * 100).toFixed(1)}%</td><td>${formatPriceByTicker(ticker, Math.round(gap), true)} (${(gap / lastPrice * 100).toFixed(1)}%)</td></tr>`;
+            }
+        }
+
+        function renderQuarterSection() {
+            const section = document.getElementById('quarterSection');
+            if (!section) return;
+            const matrixCard = document.getElementById('quarterMatrixCard');
+            const timeCard = document.getElementById('quarterTimeCard');
+            const priceCard = document.getElementById('quarterPriceCard');
+            const nearestCard = document.getElementById('quarterNearestCard');
+            const countdownCard = document.getElementById('quarterCountdownCard');
+            if (!quarterOptions.enabled || !quarterState) {
+                section.classList.add('hidden');
+                document.getElementById('quarterWaveSummary').innerHTML = '';
+                document.getElementById('quarterTimeCard').innerHTML = '';
+                document.getElementById('quarterPriceCard').innerHTML = '';
+                document.getElementById('quarterNearestCard').innerHTML = '';
+                document.getElementById('quarterCountdown').innerHTML = '';
+                document.getElementById('quarterPeriod').innerText = '--';
+                if (matrixCard) matrixCard.classList.remove('hidden');
+                if (timeCard) timeCard.classList.remove('hidden');
+                if (priceCard) priceCard.classList.remove('hidden');
+                if (nearestCard) nearestCard.classList.remove('hidden');
+                if (countdownCard) countdownCard.classList.remove('hidden');
+                renderQuarterMatrix();
+                return;
+            }
+            section.classList.remove('hidden');
+            const state = quarterState;
+            const nearestLevels = [
+                { name: '0% (Base)', value: state.priceRange.base, desc: '파동의 기점. 이탈 시 시나리오 종료' },
+                { name: '25% (Ridge)', value: state.priceRange.p25, desc: '1차 저항/지지 마디' },
+                { name: '50% (Life-Line)', value: state.priceRange.p50, desc: '가격 에너지의 생명선' },
+                { name: '75% (Accelerant)', value: state.priceRange.p75, desc: '추세 가속 분기점' },
+                { name: '100% (Peak)', value: state.priceRange.peak, desc: '기존 파동 정점' }
+            ];
+            const nearest = nearestLevels.reduce((prev, curr) => Math.abs(curr.value - state.lastPrice) < Math.abs(prev.value - state.lastPrice) ? curr : prev);
+            const startElapsed = Math.round((new Date().setHours(0,0,0,0) - new Date(state.anchors.start).setHours(0,0,0,0)) / (1000 * 60 * 60 * 24));
+            const endElapsed = Math.round((new Date().setHours(0,0,0,0) - new Date(state.anchors.end).setHours(0,0,0,0)) / (1000 * 60 * 60 * 24));
+            document.getElementById('quarterPeriod').innerText = `${state.anchors.start} → ${state.anchors.end}`;
+            document.getElementById('quarterWaveSummary').innerHTML = `
+                <div class="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2">Wave Insight</div>
+                <div class="text-[15px] font-bold leading-relaxed text-slate-800">본 파동은 <span class="text-blue-500">${state.timeRange.days}일</span>간 진행되었으며, <span class="${state.trend === 'UP' ? 'text-red-500' : 'text-blue-500'}">${state.changePct.toFixed(1)}% (${formatPriceByTicker(state.ticker, Math.round(state.changeAmt), true)})</span>의 에너지를 소모했습니다. 현재 가격은 ${nearest.name} 근방에서 지지/저항을 시험 중입니다.</div>`;
+            document.getElementById('quarterNearestCard').innerHTML = `
+                <div class="text-[10px] font-black text-red-500 uppercase tracking-widest mb-2">Nearest Level Info</div>
+                <div class="text-xl font-black text-slate-900 mb-1">${nearest.name}</div>
+                <div class="text-sm font-bold text-slate-500 italic">"${nearest.desc}"</div>
+                <div class="text-sm font-black text-slate-800 mt-3">오늘가 ${formatPriceByTicker(state.ticker, Math.round(state.lastPrice))} 기준 <span class="${(nearest.value - state.lastPrice) >= 0 ? 'text-red-500' : 'text-blue-500'}">${formatPriceByTicker(state.ticker, Math.round(nearest.value - state.lastPrice), true)} (${(((nearest.value - state.lastPrice) / state.lastPrice) * 100).toFixed(1)}%)</span></div>`;
+            document.getElementById('quarterTimeCard').innerHTML = `
+                <div class="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2">Wave Time Range</div>
+                <div class="text-sm font-bold text-slate-700">WAVE START ${state.anchors.start} <span class="text-amber-500">${formatQuarterDDay(-startElapsed)}</span></div>
+                <div class="text-sm font-bold text-slate-700 mt-1">WAVE END ${state.anchors.end} <span class="text-blue-500">${formatQuarterDDay(-endElapsed)}</span></div>
+                <div class="text-sm font-bold text-slate-500 mt-2">미래 기간 대칭은 WAVE END 날짜를 시간 앵커로 사용</div>
+                <div class="text-sm font-bold text-slate-400 mt-1">START→END ${state.timeRange.days}일 | START 경과 ${startElapsed}일 | END 경과 ${endElapsed}일</div>`;
+            document.getElementById('quarterPriceCard').innerHTML = `
+                <div class="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2">Price Gap From Today</div>
+                <div class="text-lg font-black text-slate-900">${formatPriceByTicker(state.ticker, Math.round(state.lastPrice))}</div>
+                <div class="text-sm font-bold text-slate-500 mt-1">현재 위치 ${state.currentPct.toFixed(1)}% / Base→Peak 가격 범위 기준</div>
+                <div class="pt-3 mt-3 border-t border-slate-200 text-sm font-bold text-slate-700">WAVE BASE ${formatPriceByTicker(state.ticker, Math.round(state.priceRange.base))}</div>
+                <div class="text-sm font-bold text-slate-700">WAVE PEAK ${formatPriceByTicker(state.ticker, Math.round(state.priceRange.peak))}</div>
+                <div class="pt-3 mt-3 border-t border-slate-200 text-sm font-bold text-slate-700">Peak까지 <span class="${state.gapToPeak >= 0 ? 'text-red-500' : 'text-blue-500'}">${formatPriceByTicker(state.ticker, Math.round(state.gapToPeak), true)} (${(state.gapToPeak / state.lastPrice * 100).toFixed(1)}%)</span></div>
+                <div class="text-sm font-bold text-slate-700">Base까지 <span class="${state.gapToBase >= 0 ? 'text-red-500' : 'text-blue-500'}">${formatPriceByTicker(state.ticker, Math.round(state.gapToBase), true)} (${(state.gapToBase / state.lastPrice * 100).toFixed(1)}%)</span></div>`;
+            document.getElementById('quarterCountdown').innerHTML = state.projections.map((pt) => `
+                <div class="flex justify-between items-center p-4 bg-slate-50 rounded-2xl border border-slate-100 gap-4">
+                    <div>
+                        <div class="text-[10px] font-black text-slate-400 uppercase tracking-widest">T+${pt.pct}%</div>
+                        <div class="text-[11px] font-bold text-slate-500 mt-1">${pt.mappingLabel}</div>
+                        <div class="text-[11px] font-bold text-slate-800 mt-1">타겟가 ${formatPriceByTicker(state.ticker, Math.round(pt.targetPrice))}</div>
+                    </div>
+                    <div class="text-right">
+                        <div class="text-[11px] font-black text-slate-800">${pt.d}</div>
+                        <div class="text-[11px] font-bold ${pt.priceGap >= 0 ? 'text-red-500' : 'text-blue-500'} mt-1">${formatPriceByTicker(quarterState.ticker, Math.round(pt.priceGap), true)} (${pt.priceGapPct.toFixed(1)}%)</div>
+                        <div class="text-[10px] font-black ${pt.todayDDay > 0 ? 'text-red-500' : 'text-slate-400'} mt-1">${formatQuarterDDay(pt.todayDDay)}</div>
+                    </div>
+                </div>`).join('');
+            if (matrixCard) matrixCard.classList.toggle('hidden', !quarterOptions.showSub);
+            if (timeCard) timeCard.classList.toggle('hidden', !quarterOptions.showTime);
+            if (priceCard) priceCard.classList.toggle('hidden', !quarterOptions.showVector);
+            if (nearestCard) nearestCard.classList.remove('hidden');
+            if (countdownCard) countdownCard.classList.toggle('hidden', !quarterOptions.showTime);
+            if (!quarterOptions.showTime) document.getElementById('quarterCountdown').innerHTML = '';
+            if (!quarterOptions.showVector) document.getElementById('quarterPriceCard').innerHTML = '';
+            if (!quarterOptions.showTime) document.getElementById('quarterTimeCard').innerHTML = '';
+            renderQuarterMatrix();
+        }
+
+        function runQuarterSymmetry() {
+            if (!quarterOptions.enabled) return;
+            if (compareTickers.length !== 1) {
+                quarterState = null;
+                renderQuarterSection();
+                updateQuarterHubUI();
+                return;
+            }
+            const ticker = compareTickers[0];
+            const points = globalStockData[ticker] || [];
+            const startDate = document.getElementById('quarterWaveStart').value;
+            const endDate = document.getElementById('quarterWaveEnd').value;
+            if (!points.length || !startDate || !endDate) return;
+            quarterState = analyzeQuarterSymmetry(points, startDate, endDate);
+            renderQuarterSection();
+            updateQuarterHubUI();
+            if (chart) renderChart();
+        }
+
+        function buildQuarterSymmetryPlugin() {
+            return {
+                id: 'quarterSymmetryOverlay',
+                afterDatasetsDraw: (c) => {
+                    if (!quarterOptions.enabled || !quarterState || compareTickers.length !== 1) return;
+                    const showSub = quarterOptions.showSub;
+                    const showTime = quarterOptions.showTime;
+                    const showVector = quarterOptions.showVector;
+                    const priceDatasetIndex = c.data.datasets.findIndex(dataset => dataset.isPriceSeries && !dataset.label.endsWith('-volume'));
+                    if (priceDatasetIndex < 0) return;
+                    const meta = c.getDatasetMeta(priceDatasetIndex);
+                    const xScale = c.scales.x;
+                    const yScale = c.scales.y;
+                    const { ctx, chartArea: { left, right, top, bottom } } = c;
+                    if (!xScale || !yScale) return;
+
+                    const drawLineV = (date, color, dash = []) => {
+                        const xPos = xScale.getPixelForValue(date);
+                        if (!Number.isFinite(xPos) || xPos < left || xPos > right) return null;
+                        ctx.save();
+                        ctx.strokeStyle = color;
+                        ctx.setLineDash(dash);
+                        ctx.lineWidth = 1.5;
+                        ctx.beginPath();
+                        ctx.moveTo(xPos, top);
+                        ctx.lineTo(xPos, bottom);
+                        ctx.stroke();
+                        ctx.restore();
+                        return xPos;
+                    };
+
+                    const drawLineH = (value, color, width, dash = [], label = '') => {
+                        const yPos = yScale.getPixelForValue(value);
+                        if (!Number.isFinite(yPos) || yPos < top || yPos > bottom) return;
+                        ctx.save();
+                        ctx.strokeStyle = color;
+                        ctx.setLineDash(dash);
+                        ctx.lineWidth = width;
+                        ctx.beginPath();
+                        ctx.moveTo(left, yPos);
+                        ctx.lineTo(right, yPos);
+                        ctx.stroke();
+                        ctx.fillStyle = color;
+                        ctx.font = '900 12px Pretendard';
+                        ctx.fillText(`${label} [${formatPriceByTicker(quarterState.ticker, Math.round(value))}]`, right + 10, yPos + 4);
+                        ctx.restore();
+                    };
+
+                    if (showSub) {
+                        drawLineH(quarterState.priceRange.peak, '#0f172a', 3, [], '100% PEAK');
+                        drawLineH(quarterState.priceRange.p75, '#64748b', 1.5, [8, 4], '75% RIDGE');
+                        drawLineH(quarterState.priceRange.p50, '#f59e0b', 3, [], '50% LIFE-LINE');
+                        drawLineH(quarterState.priceRange.p25, '#64748b', 1.5, [8, 4], '25% RIDGE');
+                        drawLineH(quarterState.priceRange.base, '#0f172a', 3, [], '0% BASE');
+                    }
+
+                    const xStart = drawLineV(quarterState.anchors.start, '#0f172a', [4, 4]);
+                    const xEnd = drawLineV(quarterState.anchors.end, '#0f172a', [4, 4]);
+                    if (!Number.isFinite(xStart) || !Number.isFinite(xEnd)) return;
+
+                    ctx.save();
+                    ctx.fillStyle = '#0f172a'; ctx.textAlign = 'center'; ctx.font = '900 11px Pretendard';
+                    ctx.fillText('WAVE START', xStart, top - 35);
+                    ctx.fillText(quarterState.anchors.start, xStart, top - 22);
+                    ctx.font = '900 10px Pretendard';
+                    ctx.fillText(`${quarterState.anchors.startRole} ${formatPriceByTicker(quarterState.ticker, Math.round(quarterState.anchors.startPrice))}`, xStart, top - 10);
+                    ctx.font = '900 11px Pretendard';
+                    ctx.fillText('WAVE END', xEnd, top - 35);
+                    ctx.fillText(quarterState.anchors.end, xEnd, top - 22);
+                    ctx.font = '900 10px Pretendard';
+                    ctx.fillText(`${quarterState.anchors.endRole} ${formatPriceByTicker(quarterState.ticker, Math.round(quarterState.anchors.endPrice))}`, xEnd, top - 10);
+                    ctx.restore();
+
+                    ctx.save();
+                    ctx.strokeStyle = '#0f172a';
+                    ctx.lineWidth = 3;
+                    ctx.beginPath();
+                    ctx.moveTo(xStart, top - 55);
+                    ctx.lineTo(xEnd, top - 55);
+                    ctx.stroke();
+                    ctx.fillStyle = '#0f172a';
+                    ctx.textAlign = 'center';
+                    ctx.font = '900 14px Pretendard';
+                    const sign = quarterState.changeAmt >= 0 ? '+' : '';
+                    ctx.fillText(`${quarterState.timeRange.days}D | ${sign}${quarterState.changePct.toFixed(1)}% | ${formatPriceByTicker(quarterState.ticker, Math.round(quarterState.changeAmt), true)}`, (xStart + xEnd) / 2, top - 65);
+                    ctx.restore();
+
+                    if (showVector) {
+                        drawLineH(quarterState.lastPrice, '#22c55e', 2, [5, 2], 'LTP');
+                        ctx.save();
+                        ctx.strokeStyle = '#ef4444';
+                        ctx.lineWidth = 2.5;
+                        ctx.setLineDash([6, 3]);
+                        ctx.beginPath();
+                        ctx.moveTo(xStart, yScale.getPixelForValue(quarterState.anchors.startPrice));
+                        ctx.lineTo(xEnd, yScale.getPixelForValue(quarterState.anchors.endPrice));
+                        ctx.stroke();
+                        ctx.restore();
+                    }
+
+                    let xToday = null;
+                    if (showVector) {
+                        const todayLabel = new Date().toISOString().split('T')[0];
+                        xToday = drawLineV(todayLabel, '#22c55e', [2, 2]);
+                        if (Number.isFinite(xToday)) {
+                            ctx.save();
+                            ctx.fillStyle = '#22c55e'; ctx.textAlign = 'center'; ctx.font = '900 11px Pretendard';
+                            ctx.fillText('TODAY', xToday, top - 88);
+                            ctx.fillText(todayLabel, xToday, top - 75);
+                            ctx.font = '900 10px Pretendard';
+                            ctx.fillText(`${formatPriceByTicker(quarterState.ticker, Math.round(quarterState.lastPrice))}`, xToday, top - 62);
+                            ctx.restore();
+                        }
+                    }
+
+                    if (!showTime) return;
+                    quarterState.projections.forEach((pt, idx) => {
+                        const lineColor = pt.pct === 50 ? '#f59e0b' : (pt.pct === 100 ? '#3b82f6' : '#94a3b8');
+                        const xp = drawLineV(pt.d, lineColor, [6, 3]);
+                        if (!Number.isFinite(xp)) return;
+                        const band = idx % 2 === 0 ? 0 : 26;
+                        ctx.save();
+                        ctx.fillStyle = lineColor;
+                        ctx.textAlign = 'center';
+                        ctx.font = '900 11px Pretendard';
+                        ctx.fillText(`T+${pt.pct}%`, xp, top - 62 + band);
+                        ctx.fillText(pt.d, xp, top - 49 + band);
+                        ctx.font = '900 10px Pretendard';
+                        ctx.fillText(`${pt.pricePct}% price · ${formatPriceByTicker(quarterState.ticker, Math.round(pt.targetPrice))}`, xp, top - 36 + band);
+                        ctx.fillText(`${formatPriceByTicker(quarterState.ticker, Math.round(pt.priceGap), true)} (${pt.priceGapPct.toFixed(1)}%)`, xp, top - 24 + band);
+                        ctx.restore();
+                    });
+
+                    const xP100 = xScale.getPixelForValue(quarterState.projections[3].d);
+                    if (Number.isFinite(xP100) && xP100 > xEnd) {
+                        const extMid = (xEnd + xP100) / 2;
+                        ctx.save();
+                        ctx.strokeStyle = '#3b82f6';
+                        ctx.lineWidth = 3;
+                        ctx.setLineDash([4, 2]);
+                        ctx.beginPath();
+                        ctx.moveTo(xEnd, top - 55);
+                        ctx.lineTo(xP100, top - 55);
+                        ctx.stroke();
+                        ctx.fillStyle = '#3b82f6';
+                        ctx.textAlign = 'center';
+                        ctx.font = '900 12px Pretendard';
+                        ctx.fillText('TIME SYMMETRY EXTENSION', extMid, top - 82);
+                        ctx.font = '900 11px Pretendard';
+                        ctx.fillText(`${quarterState.projections[3].mappingLabel} | ${formatPriceByTicker(quarterState.ticker, Math.round(quarterState.projections[3].targetPrice))}`, extMid, top - 66);
+                        ctx.fillText(`${formatPriceByTicker(quarterState.ticker, Math.round(quarterState.projections[3].priceGap), true)} | ${quarterState.projections[3].priceGapPct.toFixed(1)}%`, extMid, top - 52);
+                        ctx.restore();
+                    }
+                }
+            };
+        }
+
         function resetWorkspace() {
             if(!confirm("Reset current hub? DB will remain.")) return;
-            compareTickers = []; alertTickers = {}; globalStockData = {}; showVolume = false; guideLineDrawMode = false; guideLineDraft = null; editingEventId = null;
+            compareTickers = []; alertTickers = {}; globalStockData = {}; showVolume = false; guideLineDrawMode = false; guideLineDraft = null; editingEventId = null; quarterState = null;
             if(chart) chart.destroy(); chart = null;
             document.getElementById('outSub').innerHTML = '';
             document.getElementById('outPeriod').innerText = '----.--.--';
             document.getElementById('eventGrid').innerHTML = '';
+            renderQuarterSection();
             updateHubUI();
         }
 
@@ -533,9 +1257,10 @@
         function removeFromComparison(ticker) {
             compareTickers = compareTickers.filter(t => t !== ticker);
             delete alertTickers[ticker];
+            if (compareTickers.length !== 1) quarterState = null;
             updateHubUI();
             if(compareTickers.length > 0) buildTimeline();
-            else { if(chart) chart.destroy(); chart = null; document.getElementById('eventGrid').innerHTML = ''; }
+            else { if(chart) chart.destroy(); chart = null; document.getElementById('eventGrid').innerHTML = ''; renderQuarterSection(); updateQuarterHubUI(); }
         }
 
         function addAlertConfig(ticker = null, threshold = null) {
@@ -618,6 +1343,7 @@
             updateChartModeUI();
             updateVolumeUI();
             updateGuideLineDrawUI();
+            updateQuarterHubUI();
         }
 
         // --- Intelligent Chart Engine ---
@@ -651,9 +1377,18 @@
                     outSub.innerHTML += `<div class="flex items-center gap-2 font-black text-[11px]" style="color:${COLORS[i % COLORS.length]}"><span>${t}</span><span class="text-slate-300">|</span><span class="text-slate-400 font-bold uppercase">${allTickerData[t]?.company || t}</span></div>`;
                 });
                 renderChart(); refreshEventUI(); renderUnifiedSearch(); renderHistoryList(); renderGlobalEvents();
+                if (quarterOptions.enabled && compareTickers.length === 1) {
+                    syncQuarterRangeWithData();
+                    runQuarterSymmetry();
+                } else {
+                    quarterState = null;
+                    renderQuarterSection();
+                    updateQuarterHubUI();
+                }
             } catch (e) { }
             finally { document.getElementById('loading').style.display = 'none'; }
         }
+
 
         function renderChart() {
             const ctx = document.getElementById('mainChart').getContext('2d');
@@ -671,32 +1406,38 @@
             const hoverPlugin = {
                 id: 'hoverIndicator',
                 afterDatasetsDraw: (c) => {
-                    if (!hoverPoint) return;
-                    const meta = c.getDatasetMeta(hoverPoint.datasetIndex);
-                    const point = meta?.data?.[hoverPoint.index];
-                    const dataset = c.data.datasets[hoverPoint.datasetIndex];
-                    if (!point || !dataset) return;
+                    const selections = pinnedPoints.length ? pinnedPoints.map(point => {
+                        const datasetIndex = c.data.datasets.findIndex(dataset => dataset.isPriceSeries && dataset.label === point.ticker);
+                        return datasetIndex >= 0 ? { ...point, datasetIndex } : null;
+                    }).filter(Boolean) : (hoverPoint ? [hoverPoint] : []);
+                    if (!selections.length) return;
                     const { ctx, chartArea: { top, bottom } } = c;
-                    ctx.save();
-                    ctx.setLineDash([6, 6]);
-                    ctx.strokeStyle = dataset.borderColor + '88';
-                    ctx.beginPath();
-                    ctx.moveTo(point.x, top);
-                    ctx.lineTo(point.x, bottom);
-                    ctx.stroke();
-                    ctx.setLineDash([]);
-                    ctx.lineWidth = 3;
-                    ctx.strokeStyle = dataset.borderColor;
-                    ctx.fillStyle = '#ffffff';
-                    ctx.beginPath();
-                    ctx.arc(point.x, point.y, 7, 0, Math.PI * 2);
-                    ctx.fill();
-                    ctx.stroke();
-                    ctx.fillStyle = dataset.borderColor;
-                    ctx.font = '900 10px Pretendard';
-                    ctx.textAlign = 'left';
-                    ctx.fillText(dataset.label.replace(/\..*/, ''), point.x + 10, point.y - 10);
-                    ctx.restore();
+                    selections.forEach((selection, selectionIndex) => {
+                        const meta = c.getDatasetMeta(selection.datasetIndex);
+                        const point = meta?.data?.[selection.index];
+                        const dataset = c.data.datasets[selection.datasetIndex];
+                        if (!point || !dataset) return;
+                        ctx.save();
+                        ctx.setLineDash([6, 6]);
+                        ctx.strokeStyle = dataset.borderColor + '88';
+                        ctx.beginPath();
+                        ctx.moveTo(point.x, top);
+                        ctx.lineTo(point.x, bottom);
+                        ctx.stroke();
+                        ctx.setLineDash([]);
+                        ctx.lineWidth = 3;
+                        ctx.strokeStyle = dataset.borderColor;
+                        ctx.fillStyle = '#ffffff';
+                        ctx.beginPath();
+                        ctx.arc(point.x, point.y, 7, 0, Math.PI * 2);
+                        ctx.fill();
+                        ctx.stroke();
+                        ctx.fillStyle = dataset.borderColor;
+                        ctx.font = '900 10px Pretendard';
+                        ctx.textAlign = 'left';
+                        ctx.fillText(dataset.label.replace(/\..*/, ''), point.x + 10, point.y - 10 - (selectionIndex * 12));
+                        ctx.restore();
+                    });
                 }
             };
 
@@ -781,6 +1522,8 @@
                 }
             };
 
+            const quarterSymmetryPlugin = buildQuarterSymmetryPlugin();
+
             const numberingPlugin = {
                 id: 'numbering',
                 afterDatasetsDraw: (c) => {
@@ -831,11 +1574,27 @@
                 }
             };
 
+            const baseLabels = (globalStockData[compareTickers[0]] || []).map(d => d.date);
+            const labels = [...baseLabels];
+            if (quarterOptions.enabled && quarterOptions.showTime && quarterState && compareTickers.length === 1 && baseLabels.length) {
+                const lastLabelDate = new Date(baseLabels[baseLabels.length - 1]);
+                const futureDates = [new Date(), ...quarterState.projections.map(pt => new Date(pt.d))];
+                const maxFutureDate = futureDates.reduce((max, current) => current > max ? current : max, lastLabelDate);
+                const cursor = new Date(lastLabelDate);
+                while (cursor < maxFutureDate) {
+                    cursor.setDate(cursor.getDate() + 1);
+                    labels.push(cursor.toISOString().split('T')[0]);
+                }
+            }
             const datasets = compareTickers.flatMap((t, idx) => {
                 const priceDataset = {
                     label: t,
                     isPriceSeries: true,
-                    data: (globalStockData[t] || []).map(p => effectiveChartMode === 'candle' ? p.close : (isMulti ? p.change_total : p.price)),
+                    data: (() => {
+                        const source = (globalStockData[t] || []).map(p => effectiveChartMode === 'candle' ? p.close : (isMulti ? p.change_total : p.price));
+                        if (labels.length > source.length) return [...source, ...Array(labels.length - source.length).fill(null)];
+                        return source;
+                    })(),
                     borderColor: COLORS[idx % COLORS.length],
                     borderWidth: effectiveChartMode === 'candle' ? 0 : 4,
                     tension: 0.1,
@@ -852,7 +1611,11 @@
                     isPriceSeries: false,
                     yAxisID: 'yVolume',
                     order: 10,
-                    data: (globalStockData[t] || []).map(p => p.volume || 0),
+                    data: (() => {
+                        const source = (globalStockData[t] || []).map(p => p.volume || 0);
+                        if (labels.length > source.length) return [...source, ...Array(labels.length - source.length).fill(null)];
+                        return source;
+                    })(),
                     backgroundColor: 'rgba(148, 163, 184, 0.28)',
                     borderWidth: 0,
                     barPercentage: 0.82,
@@ -860,7 +1623,9 @@
                 };
                 return [priceDataset, volumeDataset];
             });
-            const labels = (globalStockData[compareTickers[0]] || []).map(d => d.date);
+            pinnedPoints = pinnedPoints.filter(point => labels.includes(point.date) && compareTickers.includes(point.ticker)).map(point => ({ ...point, index: labels.indexOf(point.date) })).filter(point => point.index >= 0);
+            if (!pinnedPoints.length) pinnedTooltipAnchor = null;
+            syncHoverPointFromSelection();
             const yValues = compareTickers.flatMap(t => (globalStockData[t] || []).flatMap(p => effectiveChartMode === 'candle' ? [p.low, p.high] : [isMulti ? Number(p.change_total) : p.price]));
             const yMin = yValues.length ? Math.min(...yValues) : 0;
             const yMax = yValues.length ? Math.max(...yValues) : 100;
@@ -879,82 +1644,38 @@
                         } else if (guideLineDrawMode) {
                             guideLineDraft = null;
                         }
-                        
-                        // Find index by X position
+
                         const points = chart.getElementsAtEventForMode(e.native, 'index', { intersect: false }, true);
                         const nearestPoint = chart.getElementsAtEventForMode(e.native, 'nearest', { intersect: false }, true);
-                        const tip = document.getElementById('intelTooltip');
-                        
+                        const nearestPricePoint = nearestPoint.find(point => chart.data.datasets[point.datasetIndex]?.isPriceSeries);
+                        const isOverFlag = flagHitAreas.some(f => Math.sqrt((xPos - f.x)**2 + (yPos - f.y)**2) < f.radius);
+                        e.native.target.style.cursor = isOverFlag ? 'pointer' : (guideLineDrawMode ? 'crosshair' : 'default');
+
                         if (points.length > 0) {
                             const idx = points[0].index;
-                            const nearestPricePoint = nearestPoint.find(point => chart.data.datasets[point.datasetIndex]?.isPriceSeries);
-                            hoverPoint = nearestPricePoint ? { datasetIndex: nearestPricePoint.datasetIndex, index: nearestPricePoint.index } : null;
-                            const targetDate = chart.data.labels[idx];
-                            
-                            // Cursor Styling
-                            const isOverFlag = flagHitAreas.some(f => Math.sqrt((xPos - f.x)**2 + (yPos - f.y)**2) < f.radius);
-                            e.native.target.style.cursor = isOverFlag ? 'pointer' : (guideLineDrawMode ? 'crosshair' : 'default');
-
-                            // Show Unified Tooltip
-                            tip.style.display = 'block';
-                            tip.style.left = (e.native.clientX + 20) + 'px';
-                            tip.style.top = (e.native.clientY - 20) + 'px';
-                            document.getElementById('ttDate').innerText = targetDate;
-
-                            // Fill Prices
-                            const priceList = document.getElementById('ttPrices'); priceList.innerHTML = '';
-                            compareTickers.forEach((t, i) => {
-                                const d = globalStockData[t][idx];
-                                const sym = t.includes('.KS') || t.includes('.KQ') || t.includes('KRW') ? '₩' : '$';
-                                const color = COLORS[i % COLORS.length];
-                                priceList.innerHTML += `
-                                    <div class="flex justify-between items-center text-[10px]">
-                                        <div class="flex items-center gap-1.5 font-black">
-                                            <div class="w-1.5 h-1.5 rounded-full" style="background:${color}"></div>
-                                            <span style="color:${color}">${t.replace(/\..*/,'')}</span>
-                                        </div>
-                                        <div class="text-right">
-                                            <div class="font-black text-white">${effectiveChartMode === 'candle' ? `O ${sym}${d.open.toLocaleString()} | H ${sym}${d.high.toLocaleString()} | L ${sym}${d.low.toLocaleString()} | C ${sym}${d.close.toLocaleString()}` : `${sym}${d.price.toLocaleString()}`}</div>
-                                            <div class="text-[8px] font-bold ${d.diff_today >= 0 ? 'text-green-400' : 'text-red-400'}">
-                                                ${d.diff_today >= 0 ? '▲' : '▼'}${sym}${Math.abs(d.diff_today).toLocaleString()} (${d.change_today}%)
-                                            </div>
-                                            ${showVolumeOverlayActive ? `<div class="text-[8px] font-bold text-slate-400 uppercase">Vol ${Number(d.volume || 0).toLocaleString()}</div>` : ''}
-                                        </div>
-                                    </div>`;
-                            });
-
-                            // Fill Events
-                            const dayEvents = merged.filter(ev => ev.date === targetDate);
-                            const evSec = document.getElementById('ttEvents');
-                            if (dayEvents.length > 0) {
-                                evSec.classList.remove('hidden');
-                                const evList = document.getElementById('ttEventList'); evList.innerHTML = '';
-                                dayEvents.forEach(ev => {
-                                    const tickerEventNumber = getTickerEventNumber(ev);
-                                    evList.innerHTML += `
-                                        <div class="pop-item">
-                                            <div class="flex items-center gap-2 mb-1">
-                                                <span class="w-4 h-4 flex items-center justify-center bg-white text-slate-900 rounded-full text-[8px] font-black">${tickerEventNumber}</span>
-                                                <span class="text-[8px] font-black px-2 py-0.5 rounded-full" style="background:${TYPE_COLORS[ev.type]}">${TYPE_LABELS[ev.type]}</span>
-                                                <span class="text-[8px] text-white/40 font-bold uppercase">${ev.ticker}</span>
-                                            </div>
-                                            <div class="text-[11px] font-black text-slate-100">${ev.title}</div>
-                                        </div>`;
-                                });
-                            } else { evSec.classList.add('hidden'); }
-
-                        } else {
-                            tip.style.display = 'none';
+                            if (!pinnedPoints.length) {
+                                hoverPoint = nearestPricePoint ? { datasetIndex: nearestPricePoint.datasetIndex, index: nearestPricePoint.index } : null;
+                                showTooltipAtIndex(idx, e.native.clientX, e.native.clientY);
+                            } else if (pinnedTooltipAnchor) {
+                                renderTooltipContentByIndex(pinnedPoints[pinnedPoints.length - 1].index);
+                                positionIntelTooltip(pinnedTooltipAnchor.clientX, pinnedTooltipAnchor.clientY);
+                            }
+                        } else if (!pinnedPoints.length) {
+                            hideIntelTooltip();
                             hoverPoint = null;
-                            e.native.target.style.cursor = guideLineDrawMode ? 'crosshair' : 'default';
                         }
                         chart.draw();
                     },
                     onLeave: (e) => {
                         guideLineDraft = null;
-                        hoverPoint = null;
-                        const tip = document.getElementById('intelTooltip');
-                        if (tip) tip.style.display = 'none';
+                        if (!pinnedPoints.length) {
+                            hoverPoint = null;
+                            hideIntelTooltip();
+                        } else if (pinnedTooltipAnchor) {
+                            syncHoverPointFromSelection();
+                            renderTooltipContentByIndex(pinnedPoints[pinnedPoints.length - 1].index);
+                            positionIntelTooltip(pinnedTooltipAnchor.clientX, pinnedTooltipAnchor.clientY);
+                        }
                         e.native.target.style.cursor = 'default';
                         if (chart) chart.draw();
                     },
@@ -972,16 +1693,37 @@
                             const value = Number(e.chart.scales.y.getValueForPixel(yPos).toFixed(2));
                             document.getElementById('guideLineValue').value = value;
                             addGuideLine(value);
+                            return;
                         }
+                        const points = chart.getElementsAtEventForMode(e.native, 'index', { intersect: false }, true);
+                        const nearestPoint = chart.getElementsAtEventForMode(e.native, 'nearest', { intersect: false }, true);
+                        const nearestPricePoint = nearestPoint.find(point => chart.data.datasets[point.datasetIndex]?.isPriceSeries);
+                        if (points.length > 0 && nearestPricePoint) {
+                            const idx = points[0].index;
+                            const dataset = chart.data.datasets[nearestPricePoint.datasetIndex];
+                            togglePinnedPoint({ index: idx, date: chart.data.labels[idx], ticker: dataset.label }, e.native.clientX, e.native.clientY);
+                        } else if (pinnedPoints.length) {
+                            pinnedPoints = [];
+                            pinnedTooltipAnchor = null;
+                            hoverPoint = null;
+                            hideIntelTooltip();
+                        }
+                        chart.draw();
                     },
+                    layout: { padding: { top: quarterOptions.enabled && quarterState && compareTickers.length === 1 ? (quarterOptions.showTime ? 182 : quarterOptions.showVector ? 118 : 92) : 24, right: quarterOptions.enabled && quarterState && compareTickers.length === 1 && quarterOptions.showSub ? 180 : 24, bottom: 24, left: 24 } },
                     plugins: { legend: { display: false }, tooltip: { enabled: false } },
                     scales: {
                         x: { display: false },
                         y: { min: yMin - ((yMax - yMin || 1) * 0.05), max: yMax + ((yMax - yMin || 1) * 0.05), ticks: { font: { weight: 'bold' } }, grid: { color: '#f1f5f9' } },
                         yVolume: { display: false, position: 'right', beginAtZero: true, grid: { display: false } }
                     }
-                }, plugins: [alertLinePlugin, guideLinePlugin, candlePlugin, hoverPlugin, numberingPlugin]
+                }, plugins: [alertLinePlugin, guideLinePlugin, candlePlugin, hoverPlugin, numberingPlugin, quarterSymmetryPlugin]
             });
+
+            if (pinnedPoints.length && pinnedTooltipAnchor) {
+                renderTooltipContentByIndex(pinnedPoints[pinnedPoints.length - 1].index);
+                showTooltipAtIndex(pinnedPoints[pinnedPoints.length - 1].index, pinnedTooltipAnchor.clientX, pinnedTooltipAnchor.clientY);
+            }
         }
 
         // --- Data Processor ---
@@ -1005,7 +1747,7 @@
                 priceAt: cur.price 
             });
             allTickerData[t].lastUpdate = new Date().toISOString();
-            saveData(); refreshEventUI(); renderChart(); renderUnifiedSearch(); renderGlobalEvents(); renderHistoryList();
+            saveData(); persistGraphTimelineMeta("graph-event-create"); refreshEventUI(); renderChart(); renderUnifiedSearch(); renderGlobalEvents(); renderHistoryList();
         }
 
         function getEventRecord(ticker, eventId) {
@@ -1067,17 +1809,17 @@
             const duplicate = { ...event, id: `event-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`, title: `${event.title} Copy` };
             allTickerData[ticker].events.push(duplicate);
             allTickerData[ticker].lastUpdate = new Date().toISOString();
-            saveData(); refreshEventUI(); renderChart(); renderUnifiedSearch(); renderGlobalEvents(); renderHistoryList();
+            saveData(); persistGraphTimelineMeta("graph-event-create"); refreshEventUI(); renderChart(); renderUnifiedSearch(); renderGlobalEvents(); renderHistoryList();
         }
 
-        function removeEvent(ticker, eventId) { if(confirm("Del?")) { allTickerData[ticker].events = allTickerData[ticker].events.filter(event => event.id !== eventId); if (editingEventId === eventId) editingEventId = null; saveData(); refreshEventUI(); renderChart(); renderUnifiedSearch(); renderGlobalEvents(); renderHistoryList(); } }
+        function removeEvent(ticker, eventId) { if(confirm("Del?")) { captureRecoveryPoint("graph-event-delete"); allTickerData[ticker].events = allTickerData[ticker].events.filter(event => event.id !== eventId); if (editingEventId === eventId) editingEventId = null; saveData(); persistGraphTimelineMeta("graph-event-delete"); refreshEventUI(); renderChart(); renderUnifiedSearch(); renderGlobalEvents(); renderHistoryList(); } }
         function toggleSection(id) { const sec = document.getElementById(id); const isHidden = sec.classList.toggle('hidden'); document.getElementById(id+'-icon').innerText = isHidden ? '▼' : '▲'; }
         function getSortedMergedEvents() { let m = []; compareTickers.forEach(t => { if(allTickerData[t]) allTickerData[t].events.forEach(e => m.push({ ...e, ticker: t, _eventRef: e })); }); return m.sort((a,b) => new Date(a.date) - new Date(b.date)); }
         function getTickerEventNumber(event) {
             const ref = event._eventRef || event;
             const index = getSortedMergedEvents().filter(e => e.ticker === event.ticker).findIndex(e => (e._eventRef || e) === ref); return index >= 0 ? index + 1 : 1;
         }
-        function saveData() { localStorage.setItem('rd_v39_db', JSON.stringify(allTickerData)); }
+        function saveData() { localStorage.setItem('rd_v39_db', JSON.stringify(allTickerData)); persistGraphTimelineMeta(null); }
         
         function renderHistoryList() {
             const list = document.getElementById('historyList'); list.innerHTML = '';
@@ -1161,7 +1903,7 @@
                 if (!isEditing) {
                     card.onclick = () => { document.getElementById('chartContainer').scrollIntoView({ behavior: 'smooth', block: 'center' }); activeHighlight = { ticker: ev.ticker, date: ev.date }; chart.draw(); setTimeout(() => { activeHighlight = null; chart.draw(); }, 3000); };
                 }
-                card.className = `p-6 rounded-[2rem] border-2 bg-white relative shadow-sm transition-all ${isEditing ? '' : 'cursor-pointer hover:shadow-lg'} group`;
+                card.className = `min-w-0 overflow-hidden p-6 rounded-[2rem] border-2 bg-white relative shadow-sm transition-all ${isEditing ? '' : 'cursor-pointer hover:shadow-lg'} group`;
                 if(ev.type !== 'def') { card.style.borderLeftColor = color; card.style.borderLeftWidth = '8px'; }
                 if (isEditing) {
                     card.innerHTML = `
@@ -1193,15 +1935,15 @@
                         </div>`;
                 } else {
                     card.innerHTML = `
-                        <div class="flex justify-between items-start mb-4">
-                            <div class="flex flex-col">
+                        <div class="flex flex-wrap justify-between items-start gap-3 mb-4">
+                            <div class="min-w-0 flex flex-col">
                                 <div class="flex items-center gap-2 mb-1">
                                     <span class="w-5 h-5 flex items-center justify-center bg-slate-900 text-white text-[10px] rounded-full font-black">${getTickerEventNumber(ev)}</span>
-                                    <span class="text-[10px] font-black text-slate-900">${ev.ticker}</span>
+                                    <span class="min-w-0 break-all text-[10px] font-black text-slate-900">${ev.ticker}</span>
                                 </div>
                                 <span class="text-[10px] font-mono font-black text-slate-300 uppercase">${ev.date}</span>
                             </div>
-                            <div class="text-right pr-20">
+                            <div class="shrink-0 text-right">
                                 <div class="text-base font-black ${ev.diff >= 0 ? 'text-green-600' : 'text-red-600'} leading-none">
                                     ${ev.diff >= 0 ? '▲' : '▼'} ${sym}${Math.abs(ev.diff).toLocaleString()}
                                 </div>
@@ -1210,8 +1952,8 @@
                                 </div>
                             </div>
                         </div>
-                        <h4 class="text-xl font-black mb-1 leading-none uppercase italic tracking-tighter">${ev.title}</h4>
-                        <p class="text-xs text-slate-500 font-medium leading-relaxed opacity-80">${ev.desc}</p>
+                        <h4 class="break-words text-xl font-black mb-1 leading-tight uppercase italic tracking-tighter">${ev.title}</h4>
+                        <p class="break-words whitespace-pre-wrap text-xs text-slate-500 font-medium leading-relaxed opacity-80">${ev.desc}</p>
                         <div class="absolute top-4 right-4 flex items-center gap-2 opacity-0 group-hover:opacity-100 transition-all">
                             <button onclick="event.stopPropagation(); startEditEvent('${ev.ticker}', '${ev.id}')" class="text-blue-500 text-[10px] font-black uppercase">Edit</button>
                             <button onclick="event.stopPropagation(); duplicateEvent('${ev.ticker}', '${ev.id}')" class="text-emerald-500 text-[10px] font-black uppercase">Copy</button>
@@ -1226,7 +1968,7 @@
             if (compareTickers.length === 0) return;
             const title = prompt("Set Name:", "Analysis Environment"); if (!title) return;
             savedCombinedSets.push({ id: Date.now(), title, tickers: [...compareTickers], alerts: JSON.parse(JSON.stringify(normalizeAlertTickers(alertTickers))), start: document.getElementById('startDate').value, end: document.getElementById('endDate').value, timestamp: new Date().toISOString() });
-            localStorage.setItem('rd_v39_combined', JSON.stringify(savedCombinedSets)); renderCombinedList();
+            localStorage.setItem('rd_v39_combined', JSON.stringify(savedCombinedSets)); persistGraphTimelineMeta("graph-set-create"); renderCombinedList();
         }
 
         function renderCombinedList() {
@@ -1239,9 +1981,9 @@
             });
         }
 
-        function deleteSet(id) { if(confirm("Del?")) { savedCombinedSets = savedCombinedSets.filter(s => s.id !== id); localStorage.setItem('rd_v39_combined', JSON.stringify(savedCombinedSets)); renderCombinedList(); } }
+        function deleteSet(id) { if(confirm("Del?")) { captureRecoveryPoint("graph-set-delete"); savedCombinedSets = savedCombinedSets.filter(s => s.id !== id); localStorage.setItem('rd_v39_combined', JSON.stringify(savedCombinedSets)); persistGraphTimelineMeta("graph-set-delete"); renderCombinedList(); } }
         function exportBackup() { const blob = new Blob([JSON.stringify({db: allTickerData, sets: savedCombinedSets})], {type:'application/json'}); const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download=`OS_INTEL_V39.json`; a.click(); }
-        function importBackup(event) { const file = event.target.files[0]; if (!file) return; const reader = new FileReader(); reader.onload = (e) => { try { const data = JSON.parse(e.target.result); allTickerData = data.db; savedCombinedSets = data.sets; location.reload(); } catch (err) { } }; reader.readAsText(file); }
+        function importBackup(event) { const file = event.target.files[0]; if (!file) return; captureRecoveryPoint("graph-import"); const reader = new FileReader(); reader.onload = (e) => { try { const data = JSON.parse(e.target.result); allTickerData = data.db || {}; savedCombinedSets = data.sets || []; localStorage.setItem('rd_v39_db', JSON.stringify(allTickerData)); localStorage.setItem('rd_v39_combined', JSON.stringify(savedCombinedSets)); persistGraphTimelineMeta("graph-import"); location.reload(); } catch (err) { } }; reader.readAsText(file); }
         function saveAsImage() { document.getElementById('loading').style.display = 'flex'; htmlToImage.toPng(document.getElementById('captureArea'), { pixelRatio: 3, backgroundColor: '#ffffff' }).then(url => { const a = document.createElement('a'); a.download = `FINANCIAL_LOG_V39.png`; a.href = url; a.click(); document.getElementById('loading').style.display = 'none'; }); }
         function renderBenchmarks() {
             const container = document.getElementById('benchmarkContainer'); container.innerHTML = '';
@@ -1253,8 +1995,8 @@
             });
         }
         function addBenchmark(t, n) { addToComparison(t, n); buildTimeline(); }
-        function addNewBenchmark() { const t = prompt("Ticker:"); const n = prompt("Name:"); const m = prompt("Memo (optional):", "") || ''; if(t && n) { benchmarkList.push({t: t.toUpperCase(), n: n.toUpperCase(), m}); localStorage.setItem('rd_v39_bench', JSON.stringify(benchmarkList)); renderBenchmarks(); renderHistoryList(); renderUnifiedSearch(); } }
-        function removeBenchmark(i) { if(confirm("삭제?")) { benchmarkList.splice(i, 1); localStorage.setItem('rd_v39_bench', JSON.stringify(benchmarkList)); renderBenchmarks(); renderHistoryList(); renderUnifiedSearch(); } }
+        function addNewBenchmark() { const t = prompt("Ticker:"); const n = prompt("Name:"); const m = prompt("Memo (optional):", "") || ''; if(t && n) { benchmarkList.push({t: t.toUpperCase(), n: n.toUpperCase(), m}); localStorage.setItem('rd_v39_bench', JSON.stringify(benchmarkList)); persistGraphTimelineMeta("graph-benchmark-create"); renderBenchmarks(); renderHistoryList(); renderUnifiedSearch(); } }
+        function removeBenchmark(i) { if(confirm("삭제?")) { captureRecoveryPoint("graph-benchmark-delete"); benchmarkList.splice(i, 1); localStorage.setItem('rd_v39_bench', JSON.stringify(benchmarkList)); persistGraphTimelineMeta("graph-benchmark-delete"); renderBenchmarks(); renderHistoryList(); renderUnifiedSearch(); } }
 
 
         window.onload = init;
