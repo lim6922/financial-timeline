@@ -28,11 +28,13 @@
 
         .benchmark-btn:hover { border-color: #2563eb; color: #2563eb; background: #eff6ff; transform: translateY(-1px); }
         
-        #intelTooltip { position: fixed; pointer-events: none; display: none; z-index: 1000; background: rgba(15, 23, 42, 0.95); color: white; padding: 16px; border-radius: 16px; box-shadow: 0 20px 40px rgba(0,0,0,0.4); min-width: 300px; max-width: min(380px, calc(100vw - 24px)); backdrop-filter: blur(8px); border: 1px solid rgba(255,255,255,0.1); }
+        #intelTooltip { position: fixed; pointer-events: auto; display: none; z-index: 1000; background: rgba(15, 23, 42, 0.95); color: white; padding: 16px; border-radius: 16px; box-shadow: 0 20px 40px rgba(0,0,0,0.4); min-width: 300px; max-width: min(420px, calc(100vw - 24px)); backdrop-filter: blur(8px); border: 1px solid rgba(255,255,255,0.1); }
         .pop-item { border-bottom: 1px solid rgba(255,255,255,0.1); padding: 8px 0; }
         .pop-item:last-child { border-bottom: none; }
         .compare-item { border-bottom: 1px solid rgba(255,255,255,0.08); padding: 8px 0; }
         .compare-item:last-child { border-bottom: none; }
+        .compare-action-btn { border: 1px solid rgba(255,255,255,0.16); background: rgba(255,255,255,0.08); color: white; border-radius: 999px; padding: 5px 10px; font-size: 9px; font-weight: 900; text-transform: uppercase; letter-spacing: 0.12em; cursor: pointer; transition: all 0.2s; }
+        .compare-action-btn:hover { background: rgba(255,255,255,0.16); border-color: rgba(255,255,255,0.28); }
         .section-header { cursor: pointer; user-select: none; }
         .event-type-option input:checked + label { background: #ffffff; color: #0f172a; box-shadow: 0 1px 3px rgba(15, 23, 42, 0.08); }
         .event-type-option input:focus-visible + label { outline: 2px solid #2563eb; outline-offset: 2px; }
@@ -58,9 +60,12 @@
 
     <!-- 고성능 통합 인텔 툴팁 -->
     <div id="intelTooltip">
-        <div class="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] mb-3 flex justify-between border-b border-white/10 pb-2">
+        <div class="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] mb-3 flex justify-between items-center border-b border-white/10 pb-2 gap-2">
             <span id="ttDate">DATE</span>
-            <span class="text-blue-400">INTELLIGENCE UNIT</span>
+            <div class="flex items-center gap-2">
+                <button id="ttClearBtn" type="button" class="compare-action-btn hidden" onclick="clearPinnedComparison()">Clear</button>
+                <span class="text-blue-400">INTELLIGENCE UNIT</span>
+            </div>
         </div>
         <div id="ttPrices" class="space-y-2 mb-3"></div>
         <div id="ttEvents" class="pt-2 border-t border-white/10 space-y-1 hidden">
@@ -70,7 +75,10 @@
         <div id="ttCompare" class="pt-2 border-t border-white/10 space-y-1 hidden">
             <div class="flex items-center justify-between gap-2 mb-2">
                 <div class="text-[9px] font-black text-sky-400 uppercase italic">2 Point Compare</div>
-                <div id="ttCompareRange" class="text-[8px] font-black text-white/40 uppercase"></div>
+                <div class="flex items-center gap-2">
+                    <div id="ttCompareRange" class="text-[8px] font-black text-white/40 uppercase"></div>
+                    <button type="button" class="compare-action-btn" onclick="clearPinnedComparison()">Cancel</button>
+                </div>
             </div>
             <div id="ttCompareList" class="space-y-1"></div>
         </div>
@@ -278,9 +286,9 @@
             <div class="bg-white p-6 rounded-[2.5rem] shadow-xl border border-slate-200 overflow-hidden">
                 <div class="section-header flex justify-between items-center mb-4" onclick="toggleSection('quarter-hub')">
                     <h3 class="text-xs font-black tracking-widest uppercase italic text-slate-400">Quarter Symmetry Hub</h3>
-                    <span id="quarter-hub-icon" class="text-[10px] text-slate-300">▲</span>
+                    <span id="quarter-hub-icon" class="text-[10px] text-slate-300">▼</span>
                 </div>
-                <div id="quarter-hub" class="space-y-4">
+                <div id="quarter-hub" class="hidden space-y-4">
                     <div class="flex items-center justify-between gap-3 bg-slate-50 rounded-[1.5rem] p-4 border border-slate-100">
                         <div>
                             <div class="text-[10px] font-black text-slate-500 uppercase tracking-widest">Optional Overlay</div>
@@ -487,6 +495,19 @@
             return formatPriceByTicker(ticker, value, false);
         }
 
+        function getComparableValue(point) {
+            if (!point) return 0;
+            if (point.price != null) return Number(point.price);
+            if (point.close != null) return Number(point.close);
+            return 0;
+        }
+
+        function getCalendarDaySpan(startDate, endDate) {
+            const start = new Date(`${startDate}T00:00:00`);
+            const end = new Date(`${endDate}T00:00:00`);
+            return Math.round((end - start) / (1000 * 60 * 60 * 24));
+        }
+
         function getPricePointByIndex(ticker, index) {
             return globalStockData[ticker]?.[index] || null;
         }
@@ -526,6 +547,7 @@
             const showVolumeOverlayActive = canShowVolumeOverlay() && showVolume;
             const merged = getSortedMergedEvents();
             document.getElementById('ttDate').innerText = targetDate;
+            document.getElementById('ttClearBtn')?.classList.toggle('hidden', !pinnedPoints.length);
 
             const priceList = document.getElementById('ttPrices');
             priceList.innerHTML = '';
@@ -575,25 +597,42 @@
             const compareSec = document.getElementById('ttCompare');
             if (pinnedPoints.length === 2) {
                 const [a, b] = [...pinnedPoints].sort((left, right) => left.index - right.index);
-                document.getElementById('ttCompareRange').innerText = `${a.date} → ${b.date}`;
+                const daySpan = getCalendarDaySpan(a.date, b.date);
+                document.getElementById('ttCompareRange').innerText = `${a.date} → ${b.date} | ${daySpan}D`;
                 const compareList = document.getElementById('ttCompareList');
                 compareList.innerHTML = '';
                 compareTickers.forEach((ticker, i) => {
                     const fromPoint = getPricePointByIndex(ticker, a.index);
                     const toPoint = getPricePointByIndex(ticker, b.index);
                     if (!fromPoint || !toPoint) return;
-                    const amount = Number(toPoint.price) - Number(fromPoint.price);
-                    const pct = Number(fromPoint.price) ? (amount / Number(fromPoint.price)) * 100 : 0;
+                    const fromValue = getComparableValue(fromPoint);
+                    const toValue = getComparableValue(toPoint);
+                    const amount = toValue - fromValue;
+                    const pct = fromValue ? (amount / fromValue) * 100 : 0;
                     const color = COLORS[i % COLORS.length];
                     compareList.innerHTML += `
-                        <div class="compare-item flex items-center justify-between gap-3 text-[10px]">
-                            <div class="flex items-center gap-1.5 font-black">
-                                <div class="w-1.5 h-1.5 rounded-full" style="background:${color}"></div>
-                                <span style="color:${color}">${ticker.replace(/\..*/,'')}</span>
+                        <div class="compare-item text-[10px]">
+                            <div class="flex items-center justify-between gap-3 mb-2">
+                                <div class="flex items-center gap-1.5 font-black">
+                                    <div class="w-1.5 h-1.5 rounded-full" style="background:${color}"></div>
+                                    <span style="color:${color}">${ticker.replace(/\..*/,'')}</span>
+                                </div>
+                                <div class="text-right">
+                                    <div class="font-black ${amount >= 0 ? 'text-green-400' : 'text-red-400'}">${amount >= 0 ? '▲' : '▼'} ${formatCurrencyByTicker(ticker, amount)}</div>
+                                    <div class="text-[8px] font-bold ${pct >= 0 ? 'text-green-300' : 'text-red-300'}">${pct >= 0 ? '+' : ''}${pct.toFixed(2)}%</div>
+                                </div>
                             </div>
-                            <div class="text-right">
-                                <div class="font-black ${amount >= 0 ? 'text-green-400' : 'text-red-400'}">${amount >= 0 ? '▲' : '▼'} ${formatCurrencyByTicker(ticker, amount)}</div>
-                                <div class="text-[8px] font-bold ${pct >= 0 ? 'text-green-300' : 'text-red-300'}">${pct >= 0 ? '+' : ''}${pct.toFixed(2)}%</div>
+                            <div class="grid grid-cols-2 gap-3 text-[8px] font-bold uppercase tracking-wide">
+                                <div class="rounded-xl bg-white/5 border border-white/10 p-2">
+                                    <div class="text-white/40 mb-1">Point A</div>
+                                    <div class="text-white">${a.date}</div>
+                                    <div class="text-sky-300 mt-1">${formatCurrencyByTicker(ticker, fromValue)}</div>
+                                </div>
+                                <div class="rounded-xl bg-white/5 border border-white/10 p-2">
+                                    <div class="text-white/40 mb-1">Point B</div>
+                                    <div class="text-white">${b.date}</div>
+                                    <div class="text-sky-300 mt-1">${formatCurrencyByTicker(ticker, toValue)}</div>
+                                </div>
                             </div>
                         </div>`;
                 });
@@ -614,6 +653,14 @@
         function hideIntelTooltip() {
             const tip = document.getElementById('intelTooltip');
             if (tip) tip.style.display = 'none';
+        }
+
+        function clearPinnedComparison() {
+            pinnedPoints = [];
+            pinnedTooltipAnchor = null;
+            hoverPoint = null;
+            hideIntelTooltip();
+            if (chart) chart.draw();
         }
 
         function togglePinnedPoint(selection, clientX, clientY) {
@@ -1703,10 +1750,7 @@
                             const dataset = chart.data.datasets[nearestPricePoint.datasetIndex];
                             togglePinnedPoint({ index: idx, date: chart.data.labels[idx], ticker: dataset.label }, e.native.clientX, e.native.clientY);
                         } else if (pinnedPoints.length) {
-                            pinnedPoints = [];
-                            pinnedTooltipAnchor = null;
-                            hoverPoint = null;
-                            hideIntelTooltip();
+                            clearPinnedComparison();
                         }
                         chart.draw();
                     },
