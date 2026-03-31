@@ -48,10 +48,50 @@
         .quarter-matrix td { border: 1px solid #e2e8f0; padding: 9px; font-weight: 700; }
         .quarter-major { background: #fffbeb; border-top: 2px solid #f59e0b; border-bottom: 2px solid #f59e0b; }
         .quarter-current { background: #f0fdf4; border: 2px solid #22c55e; }
+        .event-card-actions { opacity: 0; transition: all 0.2s; }
+        .group:hover .event-card-actions { opacity: 1; }
+
+        @media (min-width: 1280px) {
+            body.panel-left-hidden #centerPanel,
+            body.panel-right-hidden #centerPanel { flex: 1.15 1 0%; }
+            body.panel-left-hidden #captureArea,
+            body.panel-right-hidden #captureArea { width: min(1320px, 100%); }
+            body.panel-left-hidden.panel-right-hidden #centerPanel { flex: 1 1 100%; }
+            body.panel-left-hidden.panel-right-hidden #captureArea { width: min(1680px, 100%); }
+        }
+
+        @media (max-width: 768px) {
+            body { padding: 12px !important; }
+            .report-canvas { width: 100%; min-height: auto; padding: 20px 16px 24px; }
+            .panel-toggle { width: 100%; padding: 8px 12px; font-size: 9px; letter-spacing: 0.08em; }
+            #intelTooltip { min-width: 0; width: calc(100vw - 24px); }
+            #leftPanel, #rightPanel { position: static; top: auto; }
+            #centerPanel { padding: 12px; border-radius: 1.75rem; overflow-x: hidden; }
+            #chartContainer { height: 340px !important; margin-bottom: 56px; }
+            #benchmarkContainer { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+            .quarter-card { border-radius: 1.25rem; }
+            .quarter-matrix { font-size: 10px; }
+            .quarter-matrix th, .quarter-matrix td { padding: 8px 6px; }
+            #captureArea .report-footer {
+                position: static;
+                left: auto;
+                right: auto;
+                bottom: auto;
+                margin-top: 40px;
+                padding-top: 20px;
+                flex-direction: column;
+                gap: 8px;
+                align-items: flex-start;
+            }
+            #captureArea h1 { font-size: 2.25rem !important; line-height: 0.95; }
+            #outSub { gap: 10px; }
+            #outSub > div { width: 100%; }
+            .event-card-actions { opacity: 1; }
+        }
 
     </style>
 </head>
-<body class="p-4 lg:p-6 text-slate-900">
+<body class="p-3 sm:p-4 lg:p-6 text-slate-900">
 
     <div id="loading" class="loading-overlay">
         <div class="animate-spin rounded-full h-16 w-16 border-t-4 border-b-4 border-blue-700 mb-4"></div>
@@ -63,8 +103,9 @@
         <div class="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] mb-3 flex justify-between items-center border-b border-white/10 pb-2 gap-2">
             <span id="ttDate">DATE</span>
             <div class="flex items-center gap-2">
-                <button id="ttClearBtn" type="button" class="compare-action-btn hidden" onclick="clearPinnedComparison()">Clear</button>
+                <button id="ttClearBtn" type="button" class="compare-action-btn hidden" onclick="clearPinnedComparison()">Cancel</button>
                 <span class="text-blue-400">INTELLIGENCE UNIT</span>
+                <button type="button" class="compare-action-btn" onclick="closeIntelTooltip()">Close</button>
             </div>
         </div>
         <div id="ttPrices" class="space-y-2 mb-3"></div>
@@ -84,16 +125,16 @@
         </div>
     </div>
 
-    <div class="max-w-[2400px] mx-auto mb-4 flex items-center justify-between gap-3">
+    <div class="max-w-[2400px] mx-auto mb-4 flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3">
         <button id="leftPanelToggle" onclick="toggleSidePanel('left')" class="panel-toggle">Hide Left Panel</button>
-        <div class="text-[10px] font-black uppercase tracking-[0.3em] text-slate-400">Adaptive Workspace</div>
+        <div class="text-[10px] font-black uppercase tracking-[0.3em] text-slate-400 text-center">Adaptive Workspace</div>
         <button id="rightPanelToggle" onclick="toggleSidePanel('right')" class="panel-toggle">Hide Right Panel</button>
     </div>
 
     <div class="max-w-[2400px] mx-auto flex flex-col xl:flex-row gap-6">
         
         <!-- 1. 좌측 컨트롤러 (Dual-Hub) -->
-        <div id="leftPanel" class="w-full xl:w-[420px] space-y-5 h-fit sticky top-6 transition-all">
+        <div id="leftPanel" class="w-full xl:w-[420px] space-y-5 h-fit xl:sticky xl:top-6 transition-all">
 
             <!-- Comparison Hub -->
             <div class="bg-white p-6 rounded-[2.5rem] shadow-xl border border-slate-200 overflow-hidden">
@@ -104,8 +145,8 @@
                 <div id="comparison-hub" class="space-y-4">
                     <div class="space-y-4 p-5 bg-slate-50 rounded-[2rem] border border-slate-100 shadow-inner">
                         <input id="tickerName" type="text" placeholder="종목/검색어" class="w-full p-3 rounded-xl border-2 border-white shadow-sm font-bold text-sm outline-none focus:border-blue-500 transition-all text-center">
-                        <div class="flex gap-2">
-                            <input id="tickerCodeInput" type="text" placeholder="TICKER" class="w-1/3 bg-white border-2 border-white shadow-sm rounded-xl text-center font-black text-slate-900 uppercase tracking-tighter text-xs outline-none focus:border-blue-500">
+                        <div class="flex flex-col sm:flex-row gap-2">
+                            <input id="tickerCodeInput" type="text" placeholder="TICKER" class="w-full sm:w-1/3 bg-white border-2 border-white shadow-sm rounded-xl text-center font-black text-slate-900 uppercase tracking-tighter text-xs outline-none focus:border-blue-500 py-3 sm:py-0">
                             <button onclick="webMapTickerReport()" class="flex-1 bg-slate-900 text-white rounded-xl font-black text-xs hover:bg-black italic">SEARCH</button>
                             <button onclick="addToComparison()" class="bg-blue-600 text-white px-4 rounded-xl font-black text-xs hover:bg-blue-700 shadow-md transition-all">+ COMPARE</button>
                         </div>
@@ -133,6 +174,15 @@
                                 <button id="chartModeLineBtn" onclick="setChartMode('line')" class="flex-1 py-2 rounded-lg text-[10px] font-black transition-all">Line</button>
                                 <button id="chartModeCandleBtn" onclick="setChartMode('candle')" class="flex-1 py-2 rounded-lg text-[10px] font-black transition-all">Candle</button>
                             </div>
+                            <div class="flex items-center justify-between gap-3">
+                                <span class="text-[9px] font-black text-slate-400 uppercase tracking-widest">Time Frame</span>
+                                <span id="timeframeHint" class="text-[9px] font-black text-slate-300 uppercase">Daily</span>
+                            </div>
+                            <div class="flex gap-1 p-1 bg-white rounded-xl border border-slate-200">
+                                <button id="timeframeDayBtn" onclick="setChartTimeframe('day')" class="flex-1 py-2 rounded-lg text-[10px] font-black transition-all">Day</button>
+                                <button id="timeframeWeekBtn" onclick="setChartTimeframe('week')" class="flex-1 py-2 rounded-lg text-[10px] font-black transition-all">Week</button>
+                                <button id="timeframeMonthBtn" onclick="setChartTimeframe('month')" class="flex-1 py-2 rounded-lg text-[10px] font-black transition-all">Month</button>
+                            </div>
                             <div class="flex items-center justify-between gap-3 px-1">
                                 <div>
                                     <div class="text-[9px] font-black text-slate-400 uppercase tracking-widest">Volume Overlay</div>
@@ -148,6 +198,16 @@
                                 <input id="guideLineColor" type="color" value="#0f172a" class="w-full h-11 bg-white border border-slate-200 rounded-xl p-1 cursor-pointer">
                                 <input id="guideLineNote" type="text" placeholder="Line memo" class="w-full text-[10px] font-black bg-white border border-slate-200 rounded-xl p-3 outline-none text-slate-700 uppercase tracking-wide">
                             </div>
+                            <div class="space-y-2 border-t border-slate-200 pt-3">
+                                <div class="flex items-center justify-between gap-3 px-1">
+                                    <div>
+                                        <div class="text-[9px] font-black text-slate-400 uppercase tracking-widest">Moving Averages</div>
+                                        <div id="movingAverageHint" class="text-[9px] font-bold text-slate-300 uppercase">Single Asset Only</div>
+                                    </div>
+                                    <div class="text-[8px] font-black text-slate-300 uppercase">20 / 60 / 120 / 224</div>
+                                </div>
+                                <div id="movingAverageControls" class="grid grid-cols-2 gap-2"></div>
+                            </div>
                             <div class="flex items-center justify-between gap-3 px-1">
                                 <div>
                                     <div class="text-[9px] font-black text-slate-400 uppercase tracking-widest">Draw On Chart</div>
@@ -159,7 +219,7 @@
                         </div>
                     </div>
                     <div class="pt-4 border-t border-slate-200 space-y-4">
-                        <div class="grid grid-cols-2 gap-3 text-[10px] font-black text-slate-400 uppercase tracking-widest">
+                        <div class="grid grid-cols-1 sm:grid-cols-2 gap-3 text-[10px] font-black text-slate-400 uppercase tracking-widest">
                             <div>Start Date<input id="startDate" type="date" class="w-full border-b-2 p-1 font-bold bg-transparent outline-none focus:border-blue-500"></div>
                             <div>End Date<input id="endDate" type="date" class="w-full border-b-2 p-1 font-bold bg-transparent outline-none focus:border-blue-500"></div>
                         </div>
@@ -176,7 +236,7 @@
                 </div>
                 <div id="logger-hub" class="space-y-4">
                     <select id="eventTargetTicker" class="w-full text-[10px] font-black bg-slate-50 p-3 rounded-xl border-none cursor-pointer outline-none"></select>
-                    <div class="flex gap-1 p-1 bg-slate-100 rounded-xl cursor-default" role="radiogroup" aria-label="이벤트 유형 선택">
+                    <div class="flex flex-wrap gap-1 p-1 bg-slate-100 rounded-xl cursor-default" role="radiogroup" aria-label="이벤트 유형 선택">
                         <div class="event-type-option flex-1">
                             <input type="radio" name="eventType" id="typeDefault" value="def" class="sr-only" checked>
                             <label for="typeDefault" class="block text-center py-2 text-[10px] font-black rounded-lg cursor-pointer text-slate-500 hover:bg-white/80 hover:text-slate-900 transition-all select-none">기본</label>
@@ -211,7 +271,7 @@
                             <div class="w-9 h-5 bg-slate-200 rounded-full peer peer-checked:bg-blue-600 after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:after:translate-x-full"></div>
                         </label>
                     </div>
-                    <div class="grid grid-cols-[minmax(0,1fr)_88px_auto] gap-2 items-center bg-slate-50 p-3 rounded-2xl border border-slate-100">
+                    <div class="grid grid-cols-1 sm:grid-cols-[minmax(0,1fr)_88px_auto] gap-2 items-center bg-slate-50 p-3 rounded-2xl border border-slate-100">
                         <select id="alertTickerInput" class="w-full text-[10px] font-black bg-white p-3 rounded-xl border border-slate-200 cursor-pointer outline-none"></select>
                         <input id="alertThresholdInput" type="number" step="0.5" value="-3" class="w-full text-center text-[10px] font-black bg-white border border-slate-200 rounded-xl p-3 outline-none text-red-500">
                         <button onclick="addAlertConfig()" class="px-4 py-3 rounded-xl bg-slate-900 text-white text-[10px] font-black uppercase tracking-widest hover:bg-black transition-all">Add</button>
@@ -224,13 +284,13 @@
         </div>
 
         <!-- 2. 중앙 캔버스 -->
-        <div id="centerPanel" class="min-w-0 flex-1 flex justify-center bg-white p-8 rounded-[3.5rem] shadow-inner h-fit border border-slate-200 overflow-auto transition-all">
+        <div id="centerPanel" class="min-w-0 flex-1 flex justify-center bg-white p-4 sm:p-8 rounded-[2rem] sm:rounded-[3.5rem] shadow-inner h-fit border border-slate-200 overflow-auto transition-all">
             <div id="captureArea" class="report-canvas">
                 <div class="mb-12 border-b-[10px] border-slate-900 pb-8">
-                    <div class="flex justify-between items-end">
+                    <div class="flex flex-col sm:flex-row justify-between items-start sm:items-end gap-6">
                         <div>
                             <div class="inline-block px-3 py-1 bg-slate-900 text-white text-[10px] font-black rounded-sm mb-4 uppercase italic tracking-tighter">Master Intelligence & Multi-Hub Report</div>
-                            <h1 class="text-6xl font-black text-slate-900 italic uppercase leading-none tracking-tighter">FINANCIAL LOG</h1>
+                            <h1 class="text-4xl sm:text-6xl font-black text-slate-900 italic uppercase leading-none tracking-tighter">FINANCIAL LOG</h1>
                             <div id="outSub" class="flex flex-wrap gap-4 mt-6"></div>
                         </div>
                         <div class="text-right font-mono"><span id="outPeriod" class="text-base text-slate-400 font-black uppercase tracking-widest">----.--.--</span></div>
@@ -238,15 +298,15 @@
                 </div>
                 <div id="chartContainer" class="relative h-[550px] mb-20 scroll-mt-20"><canvas id="mainChart"></canvas></div>
                 <div id="quarterSection" class="hidden mb-20 space-y-8">
-                    <div class="flex items-center justify-between border-b-[6px] border-slate-900 pb-4">
+                    <div class="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 border-b-[6px] border-slate-900 pb-4">
                         <div>
                             <div class="text-[10px] font-black uppercase tracking-[0.3em] text-slate-400 italic">Quarter Symmetry Module</div>
                             <div class="text-3xl font-black italic tracking-tighter text-slate-900 uppercase">4등분 매매법</div>
                         </div>
                         <div id="quarterPeriod" class="text-sm font-black text-slate-400 uppercase tracking-widest">--</div>
                     </div>
-                    <div class="grid grid-cols-[1.2fr_1fr] gap-8">
-                        <div id="quarterMatrixCard" class="quarter-card p-6 overflow-hidden">
+                    <div class="grid grid-cols-1 lg:grid-cols-[1.2fr_1fr] gap-8">
+                        <div id="quarterMatrixCard" class="quarter-card p-4 sm:p-6 overflow-x-auto">
                             <div class="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-4">Price Matrix</div>
                             <table class="quarter-matrix" id="quarterMatrixTable">
                                 <thead>
@@ -273,8 +333,8 @@
                         <div id="quarterCountdown" class="space-y-3"></div>
                     </div>
                 </div>
-                <div id="eventGrid" class="grid grid-cols-2 gap-8"></div>
-                <div class="absolute bottom-10 left-[60px] right-[60px] flex justify-between items-center text-[10px] text-slate-300 font-bold tracking-[0.4em] border-t pt-8 uppercase">
+                <div id="eventGrid" class="grid grid-cols-1 lg:grid-cols-2 gap-5 sm:gap-8"></div>
+                <div class="report-footer absolute bottom-10 left-[60px] right-[60px] flex justify-between items-center text-[10px] text-slate-300 font-bold tracking-[0.4em] border-t pt-8 uppercase">
                     <span>Research Desk OS Core Framework V39</span>
                     <span id="timeStamp">System Ready</span>
                 </div>
@@ -282,7 +342,7 @@
         </div>
 
         <!-- 3. 우측 데이터베이스 -->
-        <div id="rightPanel" class="w-full xl:w-[400px] space-y-6 sticky top-6 h-fit font-bold transition-all">
+        <div id="rightPanel" class="w-full xl:w-[400px] space-y-6 xl:sticky xl:top-6 h-fit font-bold transition-all">
             <div class="bg-white p-6 rounded-[2.5rem] shadow-xl border border-slate-200 overflow-hidden">
                 <div class="section-header flex justify-between items-center mb-4" onclick="toggleSection('quarter-hub')">
                     <h3 class="text-xs font-black tracking-widest uppercase italic text-slate-400">Quarter Symmetry Hub</h3>
@@ -299,7 +359,7 @@
                             <label for="quarterEnabled" class="block px-4 py-2 rounded-xl border border-slate-200 text-[10px] font-black uppercase tracking-widest text-slate-500 cursor-pointer transition-all">Enable</label>
                         </div>
                     </div>
-                    <div class="grid grid-cols-2 gap-3 text-[10px] font-black text-slate-400 uppercase tracking-widest">
+                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-3 text-[10px] font-black text-slate-400 uppercase tracking-widest">
                         <div>Wave Start<input id="quarterWaveStart" type="date" class="w-full border-b-2 p-1 font-bold bg-transparent outline-none focus:border-blue-500"></div>
                         <div>Wave End<input id="quarterWaveEnd" type="date" class="w-full border-b-2 p-1 font-bold bg-transparent outline-none focus:border-blue-500"></div>
                     </div>
@@ -309,7 +369,7 @@
                         <label class="flex items-center gap-2 text-[10px] font-bold text-slate-600"><input type="checkbox" id="quarterShowTime" checked onchange="setQuarterOption('showTime', this.checked)"><span>시간 대칭(Time Symmetry)</span></label>
                         <label class="flex items-center gap-2 text-[10px] font-bold text-slate-600"><input type="checkbox" id="quarterShowVector" checked onchange="setQuarterOption('showVector', this.checked)"><span>현재가(LTP) & 벡터 라인</span></label>
                     </div>
-                    <div class="grid grid-cols-2 gap-3">
+                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
                         <button onclick="syncQuarterRangeWithData()" class="w-full text-[10px] font-black text-blue-600 bg-white border py-3 rounded-xl uppercase tracking-widest">Auto Range</button>
                         <button onclick="runQuarterSymmetry()" class="w-full text-[10px] font-black text-white bg-slate-900 py-3 rounded-xl uppercase tracking-widest">Run Module</button>
                     </div>
@@ -344,7 +404,7 @@
                         <div class="w-3 h-8 bg-white rounded-full"></div>
                         <h2 class="text-2xl font-black italic tracking-tighter uppercase leading-none">OS V39</h2>
                     </div>
-                    <div class="flex gap-1 flex-wrap justify-end">
+                    <div class="flex gap-1 flex-wrap justify-start sm:justify-end">
                         <button onclick="triggerUndoRecovery()" class="px-3 py-1.5 bg-white/15 text-white rounded-lg text-[10px] font-black uppercase hover:bg-white/20">Undo</button>
                         <button onclick="triggerRestoreRecovery()" class="px-3 py-1.5 bg-white/15 text-white rounded-lg text-[10px] font-black uppercase hover:bg-white/20">Restore</button>
                         <button onclick="exportBackup()" class="px-3 py-1.5 bg-slate-800 text-white rounded-lg text-[10px] font-black uppercase">Backup</button>
@@ -371,7 +431,9 @@
         const TYPE_COLORS = { def: '#94a3b8', pos: '#10b981', neg: '#ef4444' };
         const TYPE_LABELS = { def: '기본', pos: '호재', neg: '악재' };
         
-        let chart, compareTickers = [], alertTickers = {}, globalStockData = {}, activeHighlight = null, hoverPoint = null, chartMode = 'line', guideLines = [], showVolume = false, guideLineDrawMode = false, guideLineDraft = null, editingEventId = null;
+        let chart, compareTickers = [], alertTickers = {}, globalStockData = {}, activeHighlight = null, hoverPoint = null, chartMode = 'line', chartTimeframe = 'day', guideLines = [], showVolume = false, guideLineDrawMode = false, guideLineDraft = null, editingEventId = null;
+        const movingAveragePeriods = [20, 60, 120, 224];
+        let movingAverageConfig = { 20: false, 60: false, 120: false, 224: false };
         let quarterState = null;
         const quarterOptions = { enabled: false, showSub: true, showTime: true, showVector: true };
         let pinnedPoints = [], pinnedTooltipAnchor = null;
@@ -394,7 +456,7 @@
             document.getElementById('startDate').value = fmt(lastYear);
             document.getElementById('eventDate').value = fmt(today);
             normalizeDataStore();
-            renderBenchmarks(); renderHistoryList(); renderUnifiedSearch(); renderGlobalEvents(); renderCombinedList(); updateHubUI(); renderGuideLineUI(); updateGuideLineDrawUI(); updateChartModeUI(); updateVolumeUI(); updateQuarterHubUI();
+            renderBenchmarks(); renderHistoryList(); renderUnifiedSearch(); renderGlobalEvents(); renderCombinedList(); updateHubUI(); renderGuideLineUI(); updateGuideLineDrawUI(); updateChartModeUI(); updateTimeframeUI(); updateVolumeUI(); updateMovingAverageUI(); updateQuarterHubUI(); updateWorkspaceLayout();
         }
 
 
@@ -495,6 +557,10 @@
             return formatPriceByTicker(ticker, value, false);
         }
 
+        function getTimeframeLabel(timeframe = chartTimeframe) {
+            return ({ day: 'Daily', week: 'Weekly', month: 'Monthly' })[timeframe] || 'Daily';
+        }
+
         function getComparableValue(point) {
             if (!point) return 0;
             if (point.price != null) return Number(point.price);
@@ -545,6 +611,7 @@
             if (!targetDate) return;
             const effectiveChartMode = getEffectiveChartMode();
             const showVolumeOverlayActive = canShowVolumeOverlay() && showVolume;
+            const enabledMovingAverages = movingAveragePeriods.filter(period => movingAverageConfig[period]);
             const merged = getSortedMergedEvents();
             document.getElementById('ttDate').innerText = targetDate;
             document.getElementById('ttClearBtn')?.classList.toggle('hidden', !pinnedPoints.length);
@@ -556,6 +623,15 @@
                 if (!d) return;
                 const color = COLORS[i % COLORS.length];
                 const sym = t.includes('.KS') || t.includes('.KQ') || t.includes('KRW') ? '₩' : '$';
+                const maRows = enabledMovingAverages.map(period => {
+                    const maSeries = calculateMovingAverage(globalStockData[t] || [], period, (globalStockData[t] || []).map(point => point.date));
+                    const maValue = maSeries[idx];
+                    if (!Number.isFinite(maValue) || !Number.isFinite(d.close)) return '';
+                    const diff = d.close - maValue;
+                    const pct = maValue ? (diff / maValue) * 100 : 0;
+                    const maColor = getMovingAverageColor(period);
+                    return `<div class="text-[8px] font-bold" style="color:${maColor}">${period}MA ${sym}${Math.round(maValue).toLocaleString()} | ${formatPriceByTicker(t, Math.round(diff), true)} (${pct >= 0 ? '+' : ''}${pct.toFixed(2)}%)</div>`;
+                }).filter(Boolean).join('');
                 priceList.innerHTML += `
                     <div class="flex justify-between items-center text-[10px]">
                         <div class="flex items-center gap-1.5 font-black">
@@ -567,6 +643,7 @@
                             <div class="text-[8px] font-bold ${d.diff_today >= 0 ? 'text-green-400' : 'text-red-400'}">
                                 ${d.diff_today >= 0 ? '▲' : '▼'}${sym}${Math.abs(d.diff_today).toLocaleString()} (${d.change_today}%)
                             </div>
+                            ${maRows}
                             ${showVolumeOverlayActive ? `<div class="text-[8px] font-bold text-slate-400 uppercase">Vol ${Number(d.volume || 0).toLocaleString()}</div>` : ''}
                         </div>
                     </div>`;
@@ -655,6 +732,16 @@
             if (tip) tip.style.display = 'none';
         }
 
+        function closeIntelTooltip() {
+            if (pinnedPoints.length) {
+                clearPinnedComparison();
+                return;
+            }
+            hoverPoint = null;
+            hideIntelTooltip();
+            if (chart) chart.draw();
+        }
+
         function clearPinnedComparison() {
             pinnedPoints = [];
             pinnedTooltipAnchor = null;
@@ -682,12 +769,20 @@
             }
         }
 
+        function updateWorkspaceLayout() {
+            const leftHidden = document.getElementById('leftPanel')?.classList.contains('hidden');
+            const rightHidden = document.getElementById('rightPanel')?.classList.contains('hidden');
+            document.body.classList.toggle('panel-left-hidden', !!leftHidden);
+            document.body.classList.toggle('panel-right-hidden', !!rightHidden);
+        }
+
         function toggleSidePanel(side) {
             const panel = document.getElementById(`${side}Panel`);
             const button = document.getElementById(`${side}PanelToggle`);
             panel.classList.toggle('hidden');
             const isHidden = panel.classList.contains('hidden');
             button.innerText = `${isHidden ? 'Show' : 'Hide'} ${side === 'left' ? 'Left' : 'Right'} Panel`;
+            updateWorkspaceLayout();
         }
 
         function getEffectiveChartMode() {
@@ -710,6 +805,29 @@
             hint.innerText = isCandleFallback ? 'Candle: Single Asset Only' : activeMode === 'candle' ? 'Candle' : 'Line';
         }
 
+        function updateTimeframeUI() {
+            const hint = document.getElementById('timeframeHint');
+            const dayBtn = document.getElementById('timeframeDayBtn');
+            const weekBtn = document.getElementById('timeframeWeekBtn');
+            const monthBtn = document.getElementById('timeframeMonthBtn');
+            if (!hint || !dayBtn || !weekBtn || !monthBtn) return;
+            hint.innerText = getTimeframeLabel();
+            [
+                [dayBtn, 'day'],
+                [weekBtn, 'week'],
+                [monthBtn, 'month']
+            ].forEach(([button, key]) => {
+                button.className = `flex-1 py-2 rounded-lg text-[10px] font-black transition-all ${chartTimeframe === key ? 'bg-slate-900 text-white' : 'text-slate-400 hover:bg-slate-100'}`;
+            });
+        }
+
+        function setChartTimeframe(nextFrame = 'day') {
+            if (!['day', 'week', 'month'].includes(nextFrame)) return;
+            chartTimeframe = nextFrame;
+            updateTimeframeUI();
+            if (compareTickers.length) buildTimeline();
+        }
+
         function updateVolumeUI() {
             const button = document.getElementById('volumeToggleBtn');
             if (!button) return;
@@ -720,10 +838,90 @@
             button.innerText = !enabled ? 'Single Only' : showVolume ? 'On' : 'Off';
         }
 
+        function canShowMovingAverages() {
+            return compareTickers.length === 1;
+        }
+
+        function getMovingAverageColor(period) {
+            return ({ 20: '#e11d48', 60: '#f59e0b', 120: '#10b981', 224: '#7c3aed' })[period] || '#64748b';
+        }
+
+        function calculateMovingAverage(points, period, labels) {
+            const valueByDate = new Map();
+            points.forEach((point, idx) => {
+                if (idx + 1 < period) {
+                    valueByDate.set(point.date, null);
+                    return;
+                }
+                const slice = points.slice(idx + 1 - period, idx + 1);
+                const values = slice.map(item => Number(item.close ?? item.price)).filter(Number.isFinite);
+                valueByDate.set(point.date, values.length === period ? Number((values.reduce((sum, value) => sum + value, 0) / period).toFixed(2)) : null);
+            });
+            return labels.map(label => valueByDate.has(label) ? valueByDate.get(label) : null);
+        }
+
+        function updateMovingAverageUI() {
+            const container = document.getElementById('movingAverageControls');
+            const hint = document.getElementById('movingAverageHint');
+            if (!container || !hint) return;
+            const enabled = canShowMovingAverages();
+            if (!enabled) movingAveragePeriods.forEach(period => movingAverageConfig[period] = false);
+            hint.innerText = !enabled ? 'Single Asset Only' : Object.values(movingAverageConfig).some(Boolean) ? 'Overlay Active' : 'Optional Overlay';
+            container.innerHTML = movingAveragePeriods.map(period => {
+                const active = !!movingAverageConfig[period];
+                const color = getMovingAverageColor(period);
+                return `<button type="button" onclick="toggleMovingAverage(${period})" ${enabled ? '' : 'disabled'} class="px-3 py-3 rounded-xl border text-[10px] font-black uppercase tracking-widest transition-all ${!enabled ? 'bg-slate-100 border-slate-100 text-slate-300 cursor-not-allowed' : active ? 'text-white border-transparent shadow-sm' : 'bg-white border-slate-200 text-slate-500 hover:bg-slate-50'}" ${active ? `style="background:${color}"` : ''}>${period} MA</button>`;
+            }).join('');
+        }
+
+        function toggleMovingAverage(period) {
+            if (!canShowMovingAverages()) return;
+            movingAverageConfig[period] = !movingAverageConfig[period];
+            updateMovingAverageUI();
+            if (chart) renderChart();
+        }
+
+        function aggregateHistoryByTimeframe(points = [], timeframe = chartTimeframe) {
+            if (timeframe === 'day') return points;
+            const buckets = new Map();
+            points.forEach((point) => {
+                const date = new Date(`${point.date}T00:00:00`);
+                if (Number.isNaN(date.getTime())) return;
+                const key = timeframe === 'week'
+                    ? (() => {
+                        const monday = new Date(date);
+                        const day = (monday.getDay() + 6) % 7;
+                        monday.setDate(monday.getDate() - day);
+                        return monday.toISOString().split('T')[0];
+                    })()
+                    : `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-01`;
+                if (!buckets.has(key)) {
+                    buckets.set(key, {
+                        date: key,
+                        open: Number(point.open ?? point.close ?? point.price ?? 0),
+                        high: Number(point.high ?? point.close ?? point.price ?? 0),
+                        low: Number(point.low ?? point.close ?? point.price ?? 0),
+                        close: Number(point.close ?? point.price ?? 0),
+                        price: Number(point.close ?? point.price ?? 0),
+                        volume: Number(point.volume || 0)
+                    });
+                    return;
+                }
+                const bucket = buckets.get(key);
+                bucket.high = Math.max(bucket.high, Number(point.high ?? point.close ?? point.price ?? bucket.high));
+                bucket.low = Math.min(bucket.low, Number(point.low ?? point.close ?? point.price ?? bucket.low));
+                bucket.close = Number(point.close ?? point.price ?? bucket.close);
+                bucket.price = bucket.close;
+                bucket.volume += Number(point.volume || 0);
+            });
+            return [...buckets.values()].sort((a, b) => a.date.localeCompare(b.date));
+        }
+
         function setChartMode(mode) {
             chartMode = mode;
             updateChartModeUI();
             updateVolumeUI();
+            updateMovingAverageUI();
             renderGuideLineUI();
             if (chart) renderChart();
         }
@@ -732,6 +930,7 @@
             if (!canShowVolumeOverlay()) return;
             showVolume = !showVolume;
             updateVolumeUI();
+            updateMovingAverageUI();
             if (chart) renderChart();
         }
 
@@ -1232,6 +1431,7 @@
         function resetWorkspace() {
             if(!confirm("Reset current hub? DB will remain.")) return;
             compareTickers = []; alertTickers = {}; globalStockData = {}; showVolume = false; guideLineDrawMode = false; guideLineDraft = null; editingEventId = null; quarterState = null;
+            movingAveragePeriods.forEach(period => movingAverageConfig[period] = false);
             if(chart) chart.destroy(); chart = null;
             document.getElementById('outSub').innerHTML = '';
             document.getElementById('outPeriod').innerText = '----.--.--';
@@ -1353,6 +1553,7 @@
                 alertTickerInput.innerHTML = '<option value="">종목 없음</option>';
                 alertList.innerHTML = '<div class="p-4 rounded-2xl bg-slate-50 border border-dashed border-slate-200 text-[10px] font-black text-slate-400 uppercase italic">비교 종목을 먼저 추가하세요.</div>';
                 updateChartModeUI();
+                updateTimeframeUI();
                 updateVolumeUI();
                 updateGuideLineDrawUI();
                 return;
@@ -1388,6 +1589,7 @@
                     </div>`;
             });
             updateChartModeUI();
+            updateTimeframeUI();
             updateVolumeUI();
             updateGuideLineDrawUI();
             updateQuarterHubUI();
@@ -1405,9 +1607,9 @@
                     const res = await fetch(`${CF_WORKER_BASE}/history?ticker=${ticker}&start=${start}&end=${end}`);
                     const data = await res.json();
                     if (data.history) {
-                        const normalizedHistory = data.history.map(normalizeHistoryPoint);
+                        const normalizedHistory = aggregateHistoryByTimeframe(data.history.map(normalizeHistoryPoint), chartTimeframe);
                         globalStockData[ticker] = normalizedHistory.map((d, i) => {
-                            const prevClose = i === 0 ? d.close : normalizedHistory[i-1].close;
+                            const prevClose = i === 0 ? d.close : normalizedHistory[i - 1].close;
                             const diff = d.close - prevClose;
                             return {
                                 ...d,
@@ -1418,7 +1620,7 @@
                         });
                     }
                 }));
-                document.getElementById('outPeriod').innerText = `${start.replace(/-/g,'.')} - ${end.replace(/-/g,'.')}`;
+                document.getElementById('outPeriod').innerText = `${start.replace(/-/g,'.')} - ${end.replace(/-/g,'.')} (${getTimeframeLabel(chartTimeframe)})`;
                 const outSub = document.getElementById('outSub'); outSub.innerHTML = '';
                 compareTickers.forEach((t, i) => {
                     outSub.innerHTML += `<div class="flex items-center gap-2 font-black text-[11px]" style="color:${COLORS[i % COLORS.length]}"><span>${t}</span><span class="text-slate-300">|</span><span class="text-slate-400 font-bold uppercase">${allTickerData[t]?.company || t}</span></div>`;
@@ -1634,11 +1836,12 @@
                 }
             }
             const datasets = compareTickers.flatMap((t, idx) => {
+                const points = globalStockData[t] || [];
                 const priceDataset = {
                     label: t,
                     isPriceSeries: true,
                     data: (() => {
-                        const source = (globalStockData[t] || []).map(p => effectiveChartMode === 'candle' ? p.close : (isMulti ? p.change_total : p.price));
+                        const source = points.map(p => effectiveChartMode === 'candle' ? p.close : (isMulti ? p.change_total : p.price));
                         if (labels.length > source.length) return [...source, ...Array(labels.length - source.length).fill(null)];
                         return source;
                     })(),
@@ -1646,12 +1849,27 @@
                     borderWidth: effectiveChartMode === 'candle' ? 0 : 4,
                     tension: 0.1,
                     fill: false,
-                    pointRadius: effectiveChartMode === 'candle' ? 0 : (globalStockData[t] || []).map(p => (allTickerData[t]?.events || []).some(e => e.date === p.date) ? 6 : 0),
+                    pointRadius: effectiveChartMode === 'candle' ? 0 : points.map(p => (allTickerData[t]?.events || []).some(e => e.date === p.date) ? 6 : 0),
                     pointHoverRadius: effectiveChartMode === 'candle' ? 6 : undefined,
-                    pointBackgroundColor: (globalStockData[t] || []).map(p => { const ev = (allTickerData[t]?.events || []).find(e => e.date === p.date); return ev ? TYPE_COLORS[ev.type] : '#fff'; }),
+                    pointBackgroundColor: points.map(p => { const ev = (allTickerData[t]?.events || []).find(e => e.date === p.date); return ev ? TYPE_COLORS[ev.type] : '#fff'; }),
                     pointBorderColor: '#fff'
                 };
-                if (!showVolumeOverlayActive) return [priceDataset];
+                const overlayDatasets = canShowMovingAverages() && !isMulti
+                    ? movingAveragePeriods.filter(period => movingAverageConfig[period]).map(period => ({
+                        label: `${t}-ma-${period}`,
+                        isPriceSeries: false,
+                        isMovingAverage: true,
+                        data: calculateMovingAverage(points, period, labels),
+                        borderColor: getMovingAverageColor(period),
+                        borderWidth: 2,
+                        tension: 0.18,
+                        fill: false,
+                        pointRadius: 0,
+                        pointHoverRadius: 0,
+                        spanGaps: false
+                    }))
+                    : [];
+                if (!showVolumeOverlayActive) return [priceDataset, ...overlayDatasets];
                 const volumeDataset = {
                     label: `${t}-volume`,
                     type: 'bar',
@@ -1659,7 +1877,7 @@
                     yAxisID: 'yVolume',
                     order: 10,
                     data: (() => {
-                        const source = (globalStockData[t] || []).map(p => p.volume || 0);
+                        const source = points.map(p => p.volume || 0);
                         if (labels.length > source.length) return [...source, ...Array(labels.length - source.length).fill(null)];
                         return source;
                     })(),
@@ -1668,7 +1886,7 @@
                     barPercentage: 0.82,
                     categoryPercentage: 0.92
                 };
-                return [priceDataset, volumeDataset];
+                return [priceDataset, ...overlayDatasets, volumeDataset];
             });
             pinnedPoints = pinnedPoints.filter(point => labels.includes(point.date) && compareTickers.includes(point.ticker)).map(point => ({ ...point, index: labels.indexOf(point.date) })).filter(point => point.index >= 0);
             if (!pinnedPoints.length) pinnedTooltipAnchor = null;
@@ -1998,7 +2216,7 @@
                         </div>
                         <h4 class="break-words text-xl font-black mb-1 leading-tight uppercase italic tracking-tighter">${ev.title}</h4>
                         <p class="break-words whitespace-pre-wrap text-xs text-slate-500 font-medium leading-relaxed opacity-80">${ev.desc}</p>
-                        <div class="absolute top-4 right-4 flex items-center gap-2 opacity-0 group-hover:opacity-100 transition-all">
+                        <div class="event-card-actions absolute top-4 right-4 flex items-center gap-2">
                             <button onclick="event.stopPropagation(); startEditEvent('${ev.ticker}', '${ev.id}')" class="text-blue-500 text-[10px] font-black uppercase">Edit</button>
                             <button onclick="event.stopPropagation(); duplicateEvent('${ev.ticker}', '${ev.id}')" class="text-emerald-500 text-[10px] font-black uppercase">Copy</button>
                             <button onclick="event.stopPropagation(); removeEvent('${ev.ticker}', '${ev.id}')" class="text-red-400 text-xs">🗑</button>
@@ -2011,7 +2229,7 @@
         function saveCombinedSet() {
             if (compareTickers.length === 0) return;
             const title = prompt("Set Name:", "Analysis Environment"); if (!title) return;
-            savedCombinedSets.push({ id: Date.now(), title, tickers: [...compareTickers], alerts: JSON.parse(JSON.stringify(normalizeAlertTickers(alertTickers))), start: document.getElementById('startDate').value, end: document.getElementById('endDate').value, timestamp: new Date().toISOString() });
+            savedCombinedSets.push({ id: Date.now(), title, tickers: [...compareTickers], alerts: JSON.parse(JSON.stringify(normalizeAlertTickers(alertTickers))), start: document.getElementById('startDate').value, end: document.getElementById('endDate').value, timeframe: chartTimeframe, timestamp: new Date().toISOString() });
             localStorage.setItem('rd_v39_combined', JSON.stringify(savedCombinedSets)); persistGraphTimelineMeta("graph-set-create"); renderCombinedList();
         }
 
@@ -2019,7 +2237,7 @@
             const list = document.getElementById('set-section'); list.innerHTML = '';
             savedCombinedSets.slice().reverse().forEach(set => {
                 const item = document.createElement('div'); item.className = "p-3 bg-white/10 rounded-xl hover:bg-white/20 cursor-pointer mb-2 relative group transition-all";
-                item.onclick = () => { compareTickers = [...set.tickers]; alertTickers = normalizeAlertTickers(set.alerts || {}); document.getElementById('startDate').value = set.start; document.getElementById('endDate').value = set.end; updateHubUI(); buildTimeline(); };
+                item.onclick = () => { compareTickers = [...set.tickers]; alertTickers = normalizeAlertTickers(set.alerts || {}); chartTimeframe = ['day', 'week', 'month'].includes(set.timeframe) ? set.timeframe : 'day'; document.getElementById('startDate').value = set.start; document.getElementById('endDate').value = set.end; updateHubUI(); buildTimeline(); };
                 item.innerHTML = `<div class="text-[11px] font-black">${set.title}</div><div class="text-[8px] opacity-60">${set.tickers.length} Assets | ${new Date(set.timestamp).toLocaleDateString()}</div><button onclick="event.stopPropagation(); deleteSet(${set.id})" class="absolute top-2 right-2 opacity-0 group-hover:opacity-100 text-white">🗑</button>`;
                 list.appendChild(item);
             });
