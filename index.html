@@ -6,6 +6,7 @@
     <title>Financial Timeline OS V39 (Intelligence Master)</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="https://s3.tradingview.com/tv.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/html-to-image/1.11.11/html-to-image.min.js"></script>
     <style>
         @import url('https://fonts.googleapis.com/css2?family=Pretendard:wght@400;700;900&display=swap');
@@ -41,6 +42,55 @@
         .panel-toggle { padding: 10px 14px; border-radius: 999px; background: #ffffff; border: 1px solid #cbd5e1; font-size: 10px; font-weight: 900; text-transform: uppercase; letter-spacing: 0.12em; color: #475569; transition: all 0.2s; }
         .panel-toggle:hover { background: #eff6ff; color: #2563eb; border-color: #93c5fd; }
         .search-result-card:hover { border-color: #2563eb; }
+        
+        @keyframes pulse-outlier {
+            0% { box-shadow: 0 0 0 0 rgba(239, 68, 68, 0.7); transform: scale(1); }
+            70% { box-shadow: 0 0 0 10px rgba(239, 68, 68, 0); transform: scale(1.05); }
+            100% { box-shadow: 0 0 0 0 rgba(239, 68, 68, 0); transform: scale(1); }
+        }
+        .outlier-pulse { animation: pulse-outlier 2s infinite; z-index: 10; }
+        
+        /* 유니버스 컨트롤 레이아웃 최적화 */
+        .univ-controls-wrapper { display: flex; flex-direction: column; gap: 1rem; width: 100%; }
+        .univ-control-row { display: flex; flex-wrap: wrap; gap: 0.75rem; align-items: center; width: 100%; }
+        
+        .universe-control-card { 
+            background: white; 
+            padding: 1rem 1.25rem; 
+            border-radius: 1.5rem; 
+            border: 2px solid #f1f5f9; 
+            box-shadow: 0 4px 12px rgba(15, 23, 42, 0.03); 
+            display: flex; 
+            align-items: center;
+            gap: 0.75rem;
+        }
+        
+        /* 메인 리포트 엔진 스위치 */
+        .engine-switch-container {
+            display: flex;
+            background: #f1f5f9;
+            padding: 0.25rem;
+            border-radius: 1rem;
+            border: 1px solid #e2e8f0;
+        }
+        .engine-switch-btn {
+            padding: 0.5rem 1rem;
+            border-radius: 0.75rem;
+            font-size: 9px;
+            font-weight: 900;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            transition: all 0.2s;
+        }
+        .engine-switch-btn.active { background: white; color: #0f172a; shadow: 0 2px 4px rgba(0,0,0,0.05); }
+        .engine-switch-btn.inactive { color: #94a3b8; }
+
+        /* 모바일 그리드 최적화 */
+        @media (max-width: 640px) {
+            #universeGrid { grid-template-columns: 1fr !important; }
+            .universe-card-header { flex-direction: column; align-items: flex-start !important; gap: 0.5rem; }
+        }
+
         .quarter-toggle:checked + label { background: #0f172a; color: white; border-color: #0f172a; }
         .quarter-card { background: white; border: 1px solid #e2e8f0; border-radius: 1.75rem; box-shadow: 0 12px 28px rgba(15, 23, 42, 0.06); }
         .quarter-matrix { width: 100%; border-collapse: collapse; font-size: 11px; text-align: center; }
@@ -126,9 +176,15 @@
     </div>
 
     <div class="max-w-[2400px] mx-auto mb-4 flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3">
-        <button id="leftPanelToggle" onclick="toggleSidePanel('left')" class="panel-toggle">Hide Left Panel</button>
+        <div class="flex gap-2">
+            <button id="viewReportBtn" onclick="switchView('report')" class="px-6 py-2 rounded-full bg-slate-900 text-white text-[10px] font-black uppercase tracking-widest shadow-lg transition-all">Report View</button>
+            <button id="viewUniverseBtn" onclick="switchView('universe')" class="px-6 py-2 rounded-full bg-white border border-slate-200 text-slate-500 text-[10px] font-black uppercase tracking-widest hover:bg-slate-50 transition-all">Universe Grid</button>
+        </div>
         <div class="text-[10px] font-black uppercase tracking-[0.3em] text-slate-400 text-center">Adaptive Workspace</div>
-        <button id="rightPanelToggle" onclick="toggleSidePanel('right')" class="panel-toggle">Hide Right Panel</button>
+        <div class="flex gap-2">
+            <button id="leftPanelToggle" onclick="toggleSidePanel('left')" class="panel-toggle">Hide Left Panel</button>
+            <button id="rightPanelToggle" onclick="toggleSidePanel('right')" class="panel-toggle">Hide Right Panel</button>
+        </div>
     </div>
 
     <div class="max-w-[2400px] mx-auto flex flex-col xl:flex-row gap-6">
@@ -144,15 +200,39 @@
                 </div>
                 <div id="comparison-hub" class="space-y-4">
                     <div class="space-y-4 p-5 bg-slate-50 rounded-[2rem] border border-slate-100 shadow-inner">
-                        <input id="tickerName" type="text" placeholder="종목/검색어" class="w-full p-3 rounded-xl border-2 border-white shadow-sm font-bold text-sm outline-none focus:border-blue-500 transition-all text-center">
-                        <div class="flex flex-col sm:flex-row gap-2">
-                            <input id="tickerCodeInput" type="text" placeholder="TICKER" class="w-full sm:w-1/3 bg-white border-2 border-white shadow-sm rounded-xl text-center font-black text-slate-900 uppercase tracking-tighter text-xs outline-none focus:border-blue-500 py-3 sm:py-0">
-                            <button onclick="webMapTickerReport()" class="flex-1 bg-slate-900 text-white rounded-xl font-black text-xs hover:bg-black italic">SEARCH</button>
-                            <button onclick="addToComparison()" class="bg-blue-600 text-white px-4 rounded-xl font-black text-xs hover:bg-blue-700 shadow-md transition-all">+ COMPARE</button>
+                        <div class="relative">
+                            <input id="tickerName" type="text" oninput="renderComparisonSearchPreview()" placeholder="Search Name or Ticker..." class="w-full p-4 rounded-2xl border-2 border-white shadow-sm font-bold text-sm outline-none focus:border-blue-500 transition-all text-center">
+                            <div id="comparisonSearchResults" class="absolute top-full left-0 right-0 mt-2 z-[110] space-y-2 hidden"></div>
                         </div>
-                        <div id="priceStatus" class="mt-1 text-[10px] font-black text-blue-600 flex justify-between px-1"><span>LIVE: -</span><span id="syncTime" class="text-slate-400 font-bold uppercase tracking-tighter">READY</span></div>
-                        <div class="pt-2 border-t border-slate-200">
-                            <div class="flex justify-between items-center mb-2">
+                        
+                        <div class="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                            <div class="flex items-center bg-white border-2 border-white shadow-sm rounded-xl px-4 py-2">
+                                <span class="text-[9px] font-black text-slate-300 mr-2 uppercase">Code</span>
+                                <input id="tickerCodeInput" type="text" placeholder="TICKER" class="w-full bg-transparent font-black text-slate-900 uppercase tracking-tighter text-xs outline-none">
+                            </div>
+                            <button onclick="webMapTickerReport()" class="w-full bg-slate-900 text-white rounded-xl font-black text-[10px] hover:bg-black italic tracking-widest uppercase py-3">Set Main Asset</button>
+                        </div>
+
+                        <div class="grid grid-cols-2 gap-2 pt-2 border-t border-slate-200/50">
+                            <button onclick="addToComparison()" class="flex-1 bg-blue-600 text-white py-3 rounded-xl font-black text-[10px] hover:bg-blue-700 shadow-md transition-all uppercase tracking-widest">+ Compare</button>
+                            <div class="relative flex-1 group">
+                                <button onclick="addTickerToActiveUniverse()" class="w-full bg-emerald-600 text-white py-3 rounded-xl font-black text-[10px] hover:bg-emerald-700 shadow-md transition-all uppercase tracking-widest">+ Universe</button>
+                                <div id="activeUniverseNameIndicator" class="absolute -bottom-1 left-1/2 -translate-x-1/2 translate-y-full pt-1 text-[8px] font-black text-emerald-600 uppercase tracking-tighter opacity-70">No Universe Active</div>
+                            </div>
+                        </div>
+
+                        <div id="priceStatus" class="mt-2 text-[10px] font-black text-blue-600 flex justify-between px-1"><span>LIVE: -</span><span id="syncTime" class="text-slate-400 font-bold uppercase tracking-tighter">READY</span></div>
+                        
+                        <div class="flex items-center justify-between bg-white p-3 rounded-xl border border-slate-200 mt-2">
+                            <span class="text-[9px] font-black text-slate-500 uppercase italic">Embed Live TV Charts</span>
+                            <label class="relative inline-flex items-center cursor-pointer">
+                                <input type="checkbox" id="showLiveTVInReport" onchange="toggleLiveTVInReport(this.checked)" class="sr-only peer">
+                                <div class="w-8 h-4 bg-slate-200 rounded-full peer peer-checked:bg-slate-900 after:content-[''] after:absolute after:top-[1px] after:left-[1px] after:bg-white after:rounded-full after:h-3.5 after:w-3.5 after:transition-all peer-checked:after:translate-x-full"></div>
+                            </label>
+                        </div>
+
+                        <div class="pt-2 border-t border-slate-200 mt-2">
+                            <div class="flex justify-between items-center mb-2 px-1">
                                 <span class="text-[9px] font-black text-slate-400 uppercase tracking-widest">Global Benchmarks</span>
                                 <button onclick="addNewBenchmark()" class="text-[9px] font-bold text-blue-500 hover:underline">+ New</button>
                             </div>
@@ -284,12 +364,98 @@
         </div>
 
         <!-- 2. 중앙 캔버스 -->
-        <div id="centerPanel" class="min-w-0 flex-1 flex justify-center bg-white p-4 sm:p-8 rounded-[2rem] sm:rounded-[3.5rem] shadow-inner h-fit border border-slate-200 overflow-auto transition-all">
+        <div id="centerPanel" class="min-w-0 flex-1 flex flex-col items-center bg-white p-4 sm:p-8 rounded-[2rem] sm:rounded-[3.5rem] shadow-inner h-fit border border-slate-200 overflow-auto transition-all">
+            
+            <div id="universeView" class="hidden w-full max-w-[2400px] space-y-6">
+                <!-- Universe Top Management Hub -->
+                <div class="bg-slate-50 p-8 rounded-[3rem] border border-slate-200 shadow-sm space-y-8">
+                    <div class="flex flex-col xl:flex-row justify-between items-start xl:items-center gap-8">
+                        <div class="space-y-1">
+                            <h2 id="currentUniverseTitle" class="text-4xl font-black italic tracking-tighter text-slate-900 uppercase">Universe Intelligence</h2>
+                            <div id="currentUniverseTickers" class="text-[10px] font-black text-slate-400 uppercase tracking-[0.3em]">Global Market Heatmap & Multi-Hub Dashboard</div>
+                        </div>
+                        <div class="flex flex-wrap gap-2 items-center" id="universeListContainer">
+                            <button onclick="selectUniverse(null)" id="btnDashboard" class="px-6 py-3 rounded-full border-2 border-slate-900 bg-slate-900 text-white text-[11px] font-black uppercase tracking-widest shadow-lg transition-all">Overview Dashboard</button>
+                            <div id="universeList" class="flex flex-wrap gap-2"></div>
+                            <button onclick="showCreateUniverseModal()" class="px-6 py-3 rounded-full border-2 border-dashed border-slate-300 text-slate-400 hover:border-blue-500 hover:text-blue-500 text-[11px] font-black uppercase tracking-widest transition-all">+ NEW GROUP</button>
+                        </div>
+                    </div>
+
+                    <!-- Add/Search Controls (Contextual) - Organized 3-Row Layout -->
+                    <div id="universeControls" class="univ-controls-wrapper pt-6 border-t border-slate-200 hidden">
+                        <!-- Row 1: Identity & Management -->
+                        <div class="univ-control-row">
+                            <div class="universe-control-card flex-1 min-w-[300px]">
+                                <span class="text-[9px] font-black text-slate-400 uppercase">Universe</span>
+                                <input id="editUniverseName" type="text" placeholder="Rename Group..." class="flex-1 bg-transparent font-bold text-sm outline-none px-2">
+                                <button onclick="renameActiveUniverse()" class="px-4 py-2 bg-slate-900 text-white rounded-xl font-black text-[9px] hover:bg-black uppercase tracking-widest">Rename</button>
+                            </div>
+                        </div>
+                        
+                        <!-- Row 2: Search & Add -->
+                        <div class="univ-control-row">
+                            <div class="universe-control-card flex-1 relative">
+                                <div class="w-8 h-8 rounded-full bg-slate-100 flex items-center justify-center text-xs">🔍</div>
+                                <input id="universeSearchInput" oninput="renderUniverseUnifiedSearch()" placeholder="Search Name or Ticker to Add to this Group..." class="flex-1 bg-transparent font-bold text-sm outline-none px-2">
+                                <div id="universeSearchResults" class="absolute top-full left-0 right-0 mt-2 z-[110] space-y-2 hidden"></div>
+                            </div>
+                        </div>
+
+                        <!-- Row 3: Analysis Intelligence Controller -->
+                        <div class="univ-control-row">
+                            <div class="universe-control-card">
+                                <span class="text-[9px] font-black text-slate-400 uppercase">Engine</span>
+                                <div class="flex bg-slate-100 p-1 rounded-xl">
+                                    <button onclick="setUniverseEngine('chartjs')" id="univEngineIntelBtn" class="px-3 py-1.5 text-[9px] font-black uppercase rounded-lg transition-all bg-white shadow-sm text-blue-600">Master Intel</button>
+                                    <button onclick="setUniverseEngine('tv')" id="univEngineTVBtn" class="px-3 py-1.5 text-[9px] font-black uppercase rounded-lg transition-all text-slate-400 hover:bg-white/50">TradingView</button>
+                                </div>
+                            </div>
+                            <div class="universe-control-card">
+                                <span class="text-[9px] font-black text-slate-400 uppercase">View Intelligence</span>
+                                <div class="flex gap-1 bg-slate-100 p-1 rounded-xl">
+                                    <button onclick="toggleUnivOption('ma')" id="univOptMaBtn" class="px-3 py-1.5 text-[9px] font-black uppercase rounded-lg transition-all text-slate-400 hover:bg-white/50">MA 20/120</button>
+                                    <button onclick="toggleUnivOption('vol')" id="univOptVolBtn" class="px-3 py-1.5 text-[9px] font-black uppercase rounded-lg transition-all text-slate-400 hover:bg-white/50">Volume</button>
+                                    <button onclick="toggleUnivOption('quarter')" id="univOptQuarterBtn" class="px-3 py-1.5 text-[9px] font-black uppercase rounded-lg transition-all text-slate-400 hover:bg-white/50">Quarter Line</button>
+                                </div>
+                            </div>
+                            <div class="universe-control-card">
+                                <span class="text-[9px] font-black text-slate-400 uppercase">Grid</span>
+                                <select id="gridSizeSelect" onchange="renderUniverseGrid()" class="bg-transparent text-[10px] font-black uppercase outline-none cursor-pointer px-2">
+                                    <option value="auto">Auto Layout</option>
+                                    <option value="1">1x1 Focus</option>
+                                    <option value="2">2x2 Compare</option>
+                                    <option value="3">3x3 Matrix</option>
+                                    <option value="4">4x4 Overview</option>
+                                </select>
+                            </div>
+                            <div class="universe-control-card">
+                                <label class="flex items-center gap-2 cursor-pointer">
+                                    <input type="checkbox" id="universeOverlayComparison" onchange="renderUniverseGrid()" class="w-3 h-3 rounded-md border-slate-300">
+                                    <span class="text-[9px] font-black text-slate-400 uppercase">Overlay Compare List</span>
+                                </label>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Global Dashboard / Heatmap -->
+                <div id="universeDashboard" class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6 w-full"></div>
+
+                <!-- Active Universe Grid -->
+                <div id="universeGrid" class="grid gap-6 w-full pb-20 hidden"></div>
+            </div>
+
             <div id="captureArea" class="report-canvas">
                 <div class="mb-12 border-b-[10px] border-slate-900 pb-8">
                     <div class="flex flex-col sm:flex-row justify-between items-start sm:items-end gap-6">
                         <div>
-                            <div class="inline-block px-3 py-1 bg-slate-900 text-white text-[10px] font-black rounded-sm mb-4 uppercase italic tracking-tighter">Master Intelligence & Multi-Hub Report</div>
+                            <div class="flex items-center gap-4 mb-4">
+                                <div class="inline-block px-3 py-1 bg-slate-900 text-white text-[10px] font-black rounded-sm uppercase italic tracking-tighter">Master Intelligence & Multi-Hub Report</div>
+                                <div class="engine-switch-container">
+                                    <button id="reportEngineIntelBtn" onclick="setReportEngine('intel')" class="engine-switch-btn active">Intel</button>
+                                    <button id="reportEngineTVBtn" onclick="setReportEngine('tv')" class="engine-switch-btn inactive">Live TV</button>
+                                </div>
+                            </div>
                             <h1 class="text-4xl sm:text-6xl font-black text-slate-900 italic uppercase leading-none tracking-tighter">FINANCIAL LOG</h1>
                             <div id="outSub" class="flex flex-wrap gap-4 mt-6"></div>
                         </div>
@@ -333,6 +499,17 @@
                         <div id="quarterCountdown" class="space-y-3"></div>
                     </div>
                 </div>
+
+                <div id="reportLiveTVSection" class="hidden mb-20 space-y-8">
+                    <div class="flex items-center justify-between border-b-[6px] border-slate-900 pb-4">
+                        <div>
+                            <div class="text-[10px] font-black uppercase tracking-[0.3em] text-slate-400 italic">Live Market Intelligence</div>
+                            <div class="text-3xl font-black italic tracking-tighter text-slate-900 uppercase">Live Universe Grid</div>
+                        </div>
+                    </div>
+                    <div id="reportLiveTVGrid" class="grid gap-4 w-full"></div>
+                </div>
+
                 <div id="eventGrid" class="grid grid-cols-1 lg:grid-cols-2 gap-5 sm:gap-8"></div>
                 <div class="report-footer absolute bottom-10 left-[60px] right-[60px] flex justify-between items-center text-[10px] text-slate-300 font-bold tracking-[0.4em] border-t pt-8 uppercase">
                     <span>Research Desk OS Core Framework V39</span>
@@ -432,13 +609,16 @@
         const TYPE_LABELS = { def: '기본', pos: '호재', neg: '악재' };
         
         let chart, compareTickers = [], alertTickers = {}, globalStockData = {}, activeHighlight = null, hoverPoint = null, chartMode = 'line', chartTimeframe = 'day', guideLines = [], showVolume = false, guideLineDrawMode = false, guideLineDraft = null, editingEventId = null;
-        const movingAveragePeriods = [20, 60, 120, 224];
-        let movingAverageConfig = { 20: false, 60: false, 120: false, 224: false };
+        const movingAveragePeriods = [5, 20, 60, 120, 224, 448];
+        let movingAverageConfig = { 5: false, 20: false, 60: false, 120: false, 224: false, 448: false };
         let quarterState = null;
         const quarterOptions = { enabled: false, showSub: true, showTime: true, showVector: true };
         let pinnedPoints = [], pinnedTooltipAnchor = null;
         let allTickerData = JSON.parse(localStorage.getItem('rd_v39_db')) || {};
         let savedCombinedSets = JSON.parse(localStorage.getItem('rd_v39_combined')) || [];
+        let universes = JSON.parse(localStorage.getItem('rd_v39_universes') || '[]');
+        let activeUniverseId = null;
+
         const DEFAULT_BENCHMARKS = [
             {t:'^KS11', n:'KOSPI'}, {t:'^GSPC', n:'S&P500'}, {t:'^IXIC', n:'NASDAQ'}, {t:'^KQ11', n:'KOSDAQ'},
             {t:'DX-Y.NYB', n:'DXY'}, {t:'KRW=X', n:'USD/KRW'}, {t:'^TNX', n:'US10Y'}, {t:'KTB3Y.KS', n:'KR3Y'},
@@ -456,9 +636,638 @@
             document.getElementById('startDate').value = fmt(lastYear);
             document.getElementById('eventDate').value = fmt(today);
             normalizeDataStore();
-            renderBenchmarks(); renderHistoryList(); renderUnifiedSearch(); renderGlobalEvents(); renderCombinedList(); updateHubUI(); renderGuideLineUI(); updateGuideLineDrawUI(); updateChartModeUI(); updateTimeframeUI(); updateVolumeUI(); updateMovingAverageUI(); updateQuarterHubUI(); updateWorkspaceLayout();
+            renderBenchmarks(); renderHistoryList(); renderUnifiedSearch(); renderGlobalEvents(); renderCombinedList(); renderUniverseList(); updateHubUI(); renderGuideLineUI(); updateGuideLineDrawUI(); updateChartModeUI(); updateTimeframeUI(); updateVolumeUI(); updateMovingAverageUI(); updateQuarterHubUI(); updateWorkspaceLayout();
         }
 
+        // --- View Switching ---
+        function switchView(view) {
+            const reportBtn = document.getElementById('viewReportBtn');
+            const universeBtn = document.getElementById('viewUniverseBtn');
+            const reportArea = document.getElementById('captureArea');
+            const universeArea = document.getElementById('universeView');
+
+            if (view === 'report') {
+                reportArea.classList.remove('hidden');
+                universeArea.classList.add('hidden');
+                reportBtn.className = "px-6 py-2 rounded-full bg-slate-900 text-white text-[10px] font-black uppercase tracking-widest shadow-lg transition-all";
+                universeBtn.className = "px-6 py-2 rounded-full bg-white border border-slate-200 text-slate-500 text-[10px] font-black uppercase tracking-widest hover:bg-slate-50 transition-all";
+                if (chart) chart.draw();
+            } else {
+                reportArea.classList.add('hidden');
+                universeArea.classList.remove('hidden');
+                universeBtn.className = "px-6 py-2 rounded-full bg-slate-900 text-white text-[10px] font-black uppercase tracking-widest shadow-lg transition-all";
+                reportBtn.className = "px-6 py-2 rounded-full bg-white border border-slate-200 text-slate-500 text-[10px] font-black uppercase tracking-widest hover:bg-slate-50 transition-all";
+                if (activeUniverseId) renderUniverseGrid();
+            }
+        }
+
+        // --- Universe Hub Logic ---
+        function saveDataUniverses() {
+            localStorage.setItem('rd_v39_universes', JSON.stringify(universes));
+        }
+
+        function showCreateUniverseModal() {
+            const name = prompt('Enter New Universe Name:');
+            if (!name) return;
+            const newUniverse = {
+                id: 'univ-' + Date.now(),
+                name: name,
+                tickers: [],
+                gridSize: 'auto'
+            };
+            universes.push(newUniverse);
+            saveDataUniverses();
+            renderUniverseList();
+            selectUniverse(newUniverse.id);
+        }
+
+        function renameActiveUniverse() {
+            if (!activeUniverseId) return;
+            const input = document.getElementById('editUniverseName');
+            const newName = input.value.trim();
+            if (!newName) return alert('Enter a valid name');
+            const univ = universes.find(u => u.id === activeUniverseId);
+            if (univ) {
+                univ.name = newName;
+                saveDataUniverses();
+                selectUniverse(activeUniverseId);
+                input.value = '';
+            }
+        }
+
+        function renderUniverseList() {
+            const list = document.getElementById('universeList');
+            list.innerHTML = '';
+            universes.forEach(univ => {
+                const isActive = activeUniverseId === univ.id;
+                const div = document.createElement('div');
+                div.className = `px-6 py-3 rounded-full border-2 cursor-pointer transition-all flex items-center gap-3 group ${isActive ? 'bg-blue-600 border-blue-600 text-white shadow-lg scale-105' : 'bg-white border-slate-200 hover:border-blue-400 text-slate-700'}`;
+                div.onclick = () => selectUniverse(univ.id);
+                div.innerHTML = `
+                    <div class="text-[11px] font-black uppercase tracking-widest">${univ.name}</div>
+                    <div class="text-[8px] ${isActive ? 'text-blue-100' : 'text-slate-400'} font-black px-2 py-0.5 bg-black/5 rounded-full">${univ.tickers.length}</div>
+                    <button onclick="event.stopPropagation(); deleteUniverse('${univ.id}')" class="text-[10px] opacity-0 group-hover:opacity-100 transition-opacity hover:text-red-500">🗑</button>
+                `;
+                list.appendChild(div);
+            });
+        }
+
+        function selectUniverse(id) {
+            activeUniverseId = id;
+            const dashboard = document.getElementById('universeDashboard');
+            const grid = document.getElementById('universeGrid');
+            const controls = document.getElementById('universeControls');
+            const dashBtn = document.getElementById('btnDashboard');
+            const univIndicator = document.getElementById('activeUniverseNameIndicator');
+
+            if (id === null) {
+                // Dashboard Mode
+                dashboard.classList.remove('hidden');
+                grid.classList.add('hidden');
+                controls.classList.add('hidden');
+                dashBtn.className = "px-6 py-3 rounded-full border-2 border-slate-900 bg-slate-900 text-white text-[11px] font-black uppercase tracking-widest shadow-lg transition-all";
+                document.getElementById('currentUniverseTitle').innerText = 'Universe Intelligence';
+                document.getElementById('currentUniverseTickers').innerText = 'Global Market Heatmap & Multi-Hub Dashboard';
+                if (univIndicator) univIndicator.innerText = 'No Universe Active';
+                renderUniverseDashboard();
+            } else {
+                // Active Universe Mode
+                const univ = universes.find(u => u.id === id);
+                if (!univ) return selectUniverse(null);
+                
+                dashboard.classList.add('hidden');
+                grid.classList.remove('hidden');
+                controls.classList.remove('hidden');
+                dashBtn.className = "px-6 py-3 rounded-full border-2 border-slate-200 bg-white text-slate-400 text-[11px] font-black uppercase tracking-widest hover:border-slate-900 hover:text-slate-900 transition-all";
+                
+                document.getElementById('currentUniverseTitle').innerText = univ.name;
+                document.getElementById('currentUniverseTickers').innerText = univ.tickers.length > 0 ? univ.tickers.join(' · ') : 'No symbols added yet';
+                document.getElementById('gridSizeSelect').value = univ.gridSize;
+                document.getElementById('editUniverseName').placeholder = `Rename: ${univ.name}`;
+                if (univIndicator) univIndicator.innerText = `To: ${univ.name}`;
+                
+                if (document.getElementById('universeView').classList.contains('hidden')) {
+                    switchView('universe');
+                } else {
+                    renderUniverseGrid();
+                }
+            }
+            renderUniverseList();
+        }
+
+        async function renderComparisonSearchPreview() {
+            const input = document.getElementById('tickerName');
+            const results = document.getElementById('comparisonSearchResults');
+            const query = input.value.trim();
+            
+            if (!query) {
+                results.innerHTML = '';
+                results.classList.add('hidden');
+                return;
+            }
+
+            try {
+                const res = await fetch(`${CF_WORKER_BASE}/search?q=${encodeURIComponent(query)}`);
+                const data = await res.json();
+                
+                if (data?.quotes) {
+                    results.innerHTML = '';
+                    results.classList.remove('hidden');
+                    data.quotes.slice(0, 5).forEach(q => {
+                        const name = q.shortname || q.longname || q.symbol;
+                        const div = document.createElement('div');
+                        div.className = "bg-white p-4 rounded-2xl border-2 border-slate-100 hover:border-blue-500 cursor-pointer shadow-lg flex justify-between items-center transition-all group";
+                        div.onclick = () => selectTickerForComparison(q.symbol, name);
+                        div.innerHTML = `
+                            <div class="flex items-center gap-3">
+                                <div class="w-8 h-8 rounded-lg bg-slate-50 flex items-center justify-center text-[10px] font-black text-slate-400 group-hover:bg-blue-50 group-hover:text-blue-600 transition-all">${q.symbol.slice(0,2)}</div>
+                                <div>
+                                    <div class="text-xs font-black text-slate-900">${q.symbol} | ${name}</div>
+                                    <div class="text-[10px] font-bold text-slate-400">${q.exchange || ''}</div>
+                                </div>
+                            </div>
+                            <span class="text-[10px] font-black text-blue-600 uppercase tracking-widest opacity-0 group-hover:opacity-100 transition-all">Select</span>
+                        `;
+                        results.appendChild(div);
+                    });
+                }
+            } catch (e) {}
+        }
+
+        function selectTickerForComparison(symbol, name) {
+            document.getElementById('tickerCodeInput').value = symbol;
+            document.getElementById('tickerName').value = name;
+            document.getElementById('comparisonSearchResults').classList.add('hidden');
+            fetchQuote(symbol);
+        }
+
+        async function renderUniverseDashboard() {
+            const dashboard = document.getElementById('universeDashboard');
+            dashboard.innerHTML = '';
+            
+            if (universes.length === 0) {
+                dashboard.innerHTML = `
+                    <div class="col-span-full py-40 text-center bg-white rounded-[3rem] border-2 border-dashed border-slate-200">
+                        <div class="text-slate-300 font-black uppercase tracking-[0.5em] italic mb-6">No Data in Intelligence Hub</div>
+                        <button onclick="showCreateUniverseModal()" class="px-8 py-4 bg-blue-600 text-white rounded-2xl font-black text-xs hover:bg-blue-700 shadow-xl transition-all uppercase tracking-widest">+ Create Your First Universe</button>
+                    </div>`;
+                return;
+            }
+
+            // 실시간 데이터를 위한 플레이스홀더 렌더링
+            universes.forEach(univ => {
+                const card = document.createElement('div');
+                card.id = `univ-card-${univ.id}`;
+                card.className = "bg-white p-8 rounded-[3rem] border-2 border-slate-100 shadow-sm hover:shadow-xl hover:border-blue-500 transition-all cursor-pointer group";
+                card.innerHTML = `<div class="animate-pulse flex flex-col gap-4"><div class="h-6 bg-slate-100 rounded w-1/3"></div><div class="h-10 bg-slate-100 rounded w-2/3"></div><div class="h-24 bg-slate-100 rounded"></div></div>`;
+                dashboard.appendChild(card);
+            });
+
+            // 각 유니버스별 실시간 데이터 로드 및 실제 렌더링
+            for (const univ of universes) {
+                const card = document.getElementById(`univ-card-${univ.id}`);
+                const tickerCount = univ.tickers.length;
+                let avgChange = 0;
+                let gainers = 0;
+                let losers = 0;
+                let quotes = [];
+
+                if (tickerCount > 0) {
+                    try {
+                        const results = await Promise.all(univ.tickers.map(async (t) => {
+                            const res = await fetch(`${CF_WORKER_BASE}/quote?ticker=${t}`);
+                            return await res.json();
+                        }));
+                        quotes = results.map((q, i) => {
+                            const t = univ.tickers[i];
+                            let change = parseFloat(q?.change_percent || q?.changePercent || q?.change || 0);
+                            const price = parseFloat(q?.price || 0);
+                            const qName = q?.name || q?.shortName || q?.longName;
+
+                            if (change === 0 && globalStockData[t] && globalStockData[t].length > 1) {
+                                const pts = globalStockData[t];
+                                const last = pts[pts.length - 1];
+                                const prev = pts[pts.length - 2];
+                                if (prev && prev.close > 0) {
+                                    change = ((last.close - prev.close) / prev.close) * 100;
+                                }
+                            }
+                            return { 
+                                ticker: t, 
+                                name: qName || allTickerData[t]?.company || t,
+                                change: change,
+                                price: price
+                            };
+                        });
+                        const validQuotes = quotes.filter(q => q.price > 0 || q.change !== 0);
+                        if (validQuotes.length > 0) {
+                            avgChange = validQuotes.reduce((sum, q) => sum + q.change, 0) / validQuotes.length;
+                            gainers = validQuotes.filter(q => q.change > 0).length;
+                            losers = validQuotes.filter(q => q.change < 0).length;
+                        }                    } catch (e) { console.warn("Dashboard quote load failed", e); }
+                }
+
+                const momentumColor = avgChange >= 0 ? 'text-emerald-500' : 'text-red-500';
+                const gainerPct = tickerCount > 0 ? (gainers / tickerCount) * 100 : 0;
+
+                card.onclick = () => selectUniverse(univ.id);
+                card.innerHTML = `
+                    <div class="flex justify-between items-start mb-6">
+                        <div class="bg-slate-900 text-white px-4 py-1 rounded-full text-[8px] font-black uppercase tracking-widest">Universe Unit</div>
+                        <div class="flex flex-col items-end">
+                            <div class="text-[10px] font-black ${momentumColor} uppercase tracking-tighter">Avg ${avgChange >= 0 ? '+' : ''}${avgChange.toFixed(2)}%</div>
+                            <div class="text-[8px] font-bold text-slate-300 uppercase">${tickerCount} Symbols</div>
+                        </div>
+                    </div>
+                    
+                    <h3 class="text-2xl font-black italic text-slate-900 uppercase mb-2 group-hover:text-blue-600 transition-colors">${univ.name}</h3>
+                    
+                    <div class="flex items-center gap-2 mb-6">
+                        <div class="flex-1 h-1.5 bg-slate-100 rounded-full overflow-hidden flex">
+                            <div class="bg-emerald-400 h-full" style="width: ${gainerPct}%"></div>
+                            <div class="bg-red-400 h-full" style="width: ${100 - gainerPct}%"></div>
+                        </div>
+                        <span class="text-[8px] font-black text-slate-400 uppercase tracking-tighter">${gainers}G / ${losers}L</span>
+                    </div>
+
+                    <div class="grid grid-cols-5 gap-1.5 h-20 mb-8 overflow-y-auto custom-scroll pr-1">
+                        ${quotes.map(q => {
+                            let bgColor = 'bg-slate-200';
+                            let pulseClass = '';
+                            if (q.change > 3) bgColor = 'bg-emerald-500';
+                            else if (q.change > 0) bgColor = 'bg-emerald-300';
+                            else if (q.change < -3) bgColor = 'bg-red-500';
+                            else if (q.change < 0) bgColor = 'bg-red-300';
+
+                            if (Math.abs(q.change) >= 5) pulseClass = 'outlier-pulse';
+
+                            return `<div 
+                                onclick="event.stopPropagation(); selectTickerForComparison('${q.ticker}', '${q.name.replace(/'/g, "\\'")}'); switchView('report');"
+                                title="${q.name} (${q.ticker}): ${q.change >= 0 ? '+' : ''}${q.change.toFixed(2)}%"
+                                class="rounded-lg ${bgColor} ${pulseClass} opacity-80 hover:opacity-100 hover:scale-110 transition-all cursor-crosshair h-6 relative group/sq">
+                                <div class="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 bg-slate-900 text-white text-[8px] px-2 py-1 rounded opacity-0 group-hover/sq:opacity-100 pointer-events-none whitespace-nowrap z-50">${q.ticker} | ${q.name}</div>
+                            </div>`;
+                        }).join('')}
+                        ${tickerCount === 0 ? '<div class="col-span-full border border-dashed border-slate-200 rounded-2xl h-full flex items-center justify-center text-[8px] font-black text-slate-300 uppercase italic">Empty</div>' : ''}
+                    </div>
+                    
+                    <div class="flex justify-between items-center pt-6 border-t border-slate-50">
+                        <span class="text-[9px] font-black text-slate-400 uppercase tracking-widest">Enter Analysis</span>
+                        <div class="w-8 h-8 rounded-full bg-slate-50 flex items-center justify-center group-hover:bg-blue-600 group-hover:text-white transition-all">→</div>
+                    </div>
+                `;
+            }
+        }
+
+        async function renderUniverseUnifiedSearch() {
+            const input = document.getElementById('universeSearchInput');
+            const results = document.getElementById('universeSearchResults');
+            const query = input.value.trim();
+            
+            if (!query) {
+                results.innerHTML = '';
+                results.classList.add('hidden');
+                return;
+            }
+
+            try {
+                const res = await fetch(`${CF_WORKER_BASE}/search?q=${encodeURIComponent(query)}`);
+                const data = await res.json();
+                
+                if (data?.quotes) {
+                    results.innerHTML = '';
+                    results.classList.remove('hidden');
+                    data.quotes.slice(0, 5).forEach(q => {
+                        const name = q.shortname || q.longname || q.symbol;
+                        const div = document.createElement('div');
+                        div.className = "bg-white p-4 rounded-2xl border-2 border-slate-100 hover:border-blue-500 cursor-pointer shadow-lg flex justify-between items-center transition-all group";
+                        div.onclick = () => addTickerToUniverse(q.symbol);
+                        div.innerHTML = `
+                            <div class="flex items-center gap-3">
+                                <div class="w-8 h-8 rounded-lg bg-slate-50 flex items-center justify-center text-[10px] font-black text-slate-400 group-hover:bg-blue-50 group-hover:text-blue-600 transition-all">${q.symbol.slice(0,2)}</div>
+                                <div>
+                                    <div class="text-xs font-black text-slate-900">${q.symbol} | ${name}</div>
+                                    <div class="text-[10px] font-bold text-slate-400">${q.exchange || ''}</div>
+                                </div>
+                            </div>
+                            <span class="text-[10px] font-black text-emerald-600 uppercase tracking-widest opacity-0 group-hover:opacity-100 transition-all">+ Add</span>
+                        `;
+                        results.appendChild(div);
+                    });
+                }
+            } catch (e) {}
+        }
+
+        function addTickerToUniverse(ticker) {
+            if (!activeUniverseId) return alert('Select a universe first');
+            const univ = universes.find(u => u.id === activeUniverseId);
+            if (univ && !univ.tickers.includes(ticker.toUpperCase())) {
+                univ.tickers.push(ticker.toUpperCase());
+                saveDataUniverses();
+                selectUniverse(activeUniverseId);
+            }
+            document.getElementById('universeSearchInput').value = '';
+            document.getElementById('universeSearchResults').classList.add('hidden');
+        }
+
+        function addTickerToActiveUniverse() {
+            if (!activeUniverseId) return alert('Select a universe first');
+            const ticker = document.getElementById('tickerCodeInput').value.trim();
+            if (!ticker) return;
+            addTickerToUniverse(ticker);
+        }
+
+        function deleteUniverse(id) {
+            if (!confirm('Delete this universe?')) return;
+            universes = universes.filter(u => u.id !== id);
+            if (activeUniverseId === id) activeUniverseId = null;
+            saveDataUniverses();
+            renderUniverseList();
+            if (activeUniverseId === null) {
+                document.getElementById('universeGrid').innerHTML = '';
+                document.getElementById('currentUniverseTitle').innerText = 'Select Universe';
+                document.getElementById('currentUniverseTickers').innerText = 'Master Intelligence Workspace';
+            }
+        }
+
+        function removeTickerFromUniverse(ticker) {
+            if (!activeUniverseId) return;
+            const univ = universes.find(u => u.id === activeUniverseId);
+            if (univ) {
+                univ.tickers = univ.tickers.filter(t => t !== ticker);
+                saveDataUniverses();
+                selectUniverse(activeUniverseId);
+            }
+        }
+
+        // --- Grid Intelligence Logic ---
+        let univOptions = { ma: false, vol: false, quarter: false, engine: 'chartjs' };
+
+        function setUniverseEngine(engine) {
+            univOptions.engine = engine;
+            updateUnivIntelligenceUI();
+            renderUniverseGrid();
+        }
+
+        function toggleUnivOption(opt) {
+            univOptions[opt] = !univOptions[opt];
+            updateUnivIntelligenceUI();
+            renderUniverseGrid();
+        }
+
+        function updateUnivIntelligenceUI() {
+            const btns = {
+                ma: document.getElementById('univOptMaBtn'),
+                vol: document.getElementById('univOptVolBtn'),
+                quarter: document.getElementById('univOptQuarterBtn'),
+                engineIntel: document.getElementById('univEngineIntelBtn'),
+                engineTV: document.getElementById('univEngineTVBtn')
+            };
+
+            const activeClass = "px-3 py-1.5 text-[9px] font-black uppercase rounded-lg transition-all bg-white shadow-sm text-blue-600";
+            const inactiveClass = "px-3 py-1.5 text-[9px] font-black uppercase rounded-lg transition-all text-slate-400 hover:bg-white/50";
+
+            if (btns.ma) btns.ma.className = univOptions.ma ? activeClass : inactiveClass;
+            if (btns.vol) btns.vol.className = univOptions.vol ? activeClass : inactiveClass;
+            if (btns.quarter) btns.quarter.className = univOptions.quarter ? activeClass : inactiveClass;
+            
+            if (btns.engineIntel) btns.engineIntel.className = univOptions.engine === 'chartjs' ? activeClass : inactiveClass;
+            if (btns.engineTV) btns.engineTV.className = univOptions.engine === 'tv' ? activeClass : inactiveClass;
+        }
+
+        function setReportEngine(engine) {
+            const intelBtn = document.getElementById('reportEngineIntelBtn');
+            const tvBtn = document.getElementById('reportEngineTVBtn');
+            const chartArea = document.getElementById('chartContainer');
+            const tvSection = document.getElementById('reportLiveTVSection');
+
+            if (engine === 'tv') {
+                intelBtn.className = "engine-switch-btn inactive";
+                tvBtn.className = "engine-switch-btn active";
+                chartArea.classList.add('hidden');
+                tvSection.classList.remove('hidden');
+                renderReportLiveTVGrid();
+            } else {
+                intelBtn.className = "engine-switch-btn active";
+                tvBtn.className = "engine-switch-btn inactive";
+                chartArea.classList.remove('hidden');
+                tvSection.classList.add('hidden');
+                if (chart) chart.draw();
+            }
+        }
+
+        function setUniversePeriod(days) {
+            const end = new Date();
+            const start = new Date();
+            start.setDate(end.getDate() - days);
+            const fmt = (d) => d.toISOString().split('T')[0];
+            document.getElementById('startDate').value = fmt(start);
+            document.getElementById('endDate').value = fmt(end);
+            if (activeUniverseId) renderUniverseGrid();
+        }
+
+        async function renderUniverseGrid() {
+            const grid = document.getElementById('universeGrid');
+            const univ = universes.find(u => u.id === activeUniverseId);
+            if (!univ) return;
+
+            const engine = univOptions.engine;
+            univ.gridSize = document.getElementById('gridSizeSelect').value;
+            saveDataUniverses();
+
+            grid.innerHTML = '';
+            if (univ.tickers.length === 0) {
+                grid.innerHTML = '<div class="col-span-full py-40 text-center text-slate-300 font-black uppercase tracking-[0.5em] italic bg-slate-50 rounded-[3rem] border-2 border-dashed border-slate-200">Start by adding symbols to your universe</div>';
+                return;
+            }
+
+            const count = univ.tickers.length;
+            let columns = 1;
+            if (univ.gridSize === 'auto') {
+                if (count >= 16) columns = 4;
+                else if (count >= 9) columns = 3;
+                else if (count >= 2) columns = 2;
+                else columns = 1;
+            } else {
+                columns = parseInt(univ.gridSize);
+            }
+
+            grid.style.gridTemplateColumns = `repeat(${columns}, 1fr)`;
+
+            document.getElementById('loading').style.display = 'flex';
+            const start = document.getElementById('startDate').value;
+            const end = document.getElementById('endDate').value;
+            
+            try {
+                await Promise.all(univ.tickers.map(async (ticker) => {
+                    const res = await fetch(`${CF_WORKER_BASE}/history?ticker=${ticker}&start=${start}&end=${end}`);
+                    const data = await res.json();
+                    if (data.history) {
+                        globalStockData[ticker] = aggregateHistoryByTimeframe(data.history.map(normalizeHistoryPoint), chartTimeframe);
+                        if (data.name) {
+                            if (!allTickerData[ticker]) allTickerData[ticker] = { company: data.name, events: [], lastUpdate: new Date().toISOString() };
+                            else allTickerData[ticker].company = data.name;
+                        }
+                    }
+                }));
+                saveData();
+            } catch (e) { console.error("Universe data sync failed", e); }
+            finally { document.getElementById('loading').style.display = 'none'; }
+
+            univ.tickers.forEach(symbol => {
+                const container = document.createElement('div');
+                container.className = "relative bg-white rounded-[2.5rem] border-2 border-slate-100 overflow-hidden shadow-sm hover:shadow-xl hover:border-blue-400 transition-all h-[500px] group flex flex-col";
+                
+                const displayName = allTickerData[symbol]?.company || symbol;
+                const widgetId = `univ-widget-${symbol.replace(/[^a-zA-Z0-9]/g, '-')}`;
+                container.innerHTML = `
+                    <div class="p-6 border-b border-slate-50 flex justify-between items-center bg-slate-50/50">
+                        <div class="flex flex-col min-w-0">
+                            <span class="text-[10px] font-black text-blue-600 uppercase tracking-tighter leading-none mb-1">Asset View</span>
+                            <span class="text-sm font-black uppercase tracking-tight leading-none text-slate-900 truncate">${symbol} | ${displayName}</span>
+                        </div>
+                        <div class="flex gap-2 opacity-0 group-hover:opacity-100 transition-all shrink-0">
+                            <button onclick="selectTickerForComparison('${symbol}', '${displayName.replace(/'/g, "\\'")}'); switchView('report');" class="bg-blue-600 text-white px-4 py-2 rounded-xl font-black text-[9px] uppercase tracking-widest hover:bg-blue-700 transition-all">Analyze</button>
+                            <button onclick="removeTickerFromUniverse('${symbol}')" class="bg-white text-red-500 border border-red-100 px-4 py-2 rounded-xl font-black text-[9px] uppercase tracking-widest hover:bg-red-50 transition-all">Remove</button>
+                        </div>
+                    </div>
+                    <div class="flex-1 relative bg-white">
+                        <div id="${widgetId}" class="w-full h-full flex items-center justify-center">
+                            ${engine === 'chartjs' ? `<canvas id="canvas-${widgetId}" class="w-full h-full"></canvas>` : ''}
+                        </div>
+                    </div>
+                `;
+                grid.appendChild(container);
+
+                if (engine === 'tv') {
+                    new TradingView.widget({
+                        "autosize": true,
+                        "symbol": symbol,
+                        "interval": "D",
+                        "timezone": "Etc/UTC",
+                        "theme": "light",
+                        "style": chartType === 'candle' ? "1" : "3",
+                        "locale": "en",
+                        "toolbar_bg": "#f1f5f9",
+                        "enable_publishing": false,
+                        "hide_top_toolbar": false,
+                        "hide_legend": false,
+                        "save_image": false,
+                        "container_id": widgetId,
+                        "studies": univOptions.ma ? movingAveragePeriods.map(p => ({ id: "MAExp@tv-basicstudies", inputs: { length: p } })) : []
+                    });
+                } else {
+                    setTimeout(() => drawUniverseMiniChart(symbol, `canvas-${widgetId}`), 10);
+                }
+            });
+        }
+
+        function drawUniverseMiniChart(symbol, canvasId) {
+            const canvas = document.getElementById(canvasId);
+            if (!canvas) return;
+            const ctx = canvas.getContext('2d');
+            const data = globalStockData[symbol] || [];
+            if (!data.length) return;
+
+            const labels = data.map(d => d.date);
+            const prices = data.map(d => d.close || d.price);
+            const displayName = allTickerData[symbol]?.company || symbol;
+            
+            const datasets = [{
+                label: symbol,
+                isPriceSeries: true,
+                data: prices,
+                borderColor: COLORS[0],
+                borderWidth: 3,
+                pointRadius: 0,
+                tension: 0.1,
+                fill: false
+            }];
+
+            if (univOptions.ma) {
+                // global config에 활성화된 모든 MA를 표시
+                movingAveragePeriods.filter(p => movingAverageConfig[p]).forEach(period => {
+                    datasets.push({
+                        label: `${symbol}-ma-${period}`,
+                        data: calculateMovingAverage(data, period, labels),
+                        borderColor: getMovingAverageColor(period),
+                        borderWidth: 1.5,
+                        pointRadius: 0,
+                        tension: 0.15,
+                        fill: false
+                    });
+                });
+            }
+
+            if (univOptions.vol) {
+                datasets.push({
+                    type: 'bar',
+                    yAxisID: 'yVolume',
+                    data: data.map(d => d.volume || 0),
+                    backgroundColor: 'rgba(148, 163, 184, 0.15)',
+                    barPercentage: 0.8
+                });
+            }
+
+            if (document.getElementById('universeOverlayComparison').checked) {
+                compareTickers.forEach((t, idx) => {
+                    if (t === symbol) return;
+                    const compData = globalStockData[t] || [];
+                    if (compData.length) {
+                        datasets.push({
+                            label: t,
+                            data: compData.map(d => d.close || d.price),
+                            borderColor: COLORS[(idx + 1) % COLORS.length] + '44',
+                            borderWidth: 1.5,
+                            pointRadius: 0,
+                            tension: 0.1,
+                            fill: false
+                        });
+                    }
+                });
+            }
+
+            const plugins = [];
+            if (univOptions.quarter && quarterState && quarterState.ticker === symbol) {
+                plugins.push(buildQuarterSymmetryPlugin());
+            }
+
+            new Chart(ctx, {
+                type: 'line',
+                data: { labels, datasets },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: { 
+                        legend: { display: false }, 
+                        tooltip: { 
+                            enabled: true,
+                            backgroundColor: 'rgba(15, 23, 42, 0.9)',
+                            padding: 12,
+                            cornerRadius: 12,
+                            callbacks: {
+                                label: (context) => {
+                                    const ds = context.dataset;
+                                    const val = context.parsed.y;
+                                    if (ds.type === 'bar') return ` VOL: ${Number(val).toLocaleString()}`;
+                                    const label = ds.label || symbol;
+                                    return ` ${label.replace(/\..*/, '')}: ${formatPriceByTicker(symbol, val)}`;
+                                }
+                            }
+                        } 
+                    },
+                    scales: {
+                        x: { display: false },
+                        y: { 
+                            ticks: { font: { weight: 'bold', size: 9 }, callback: (val) => formatPriceByTicker(symbol, val) },
+                            grid: { color: '#f1f5f9' }
+                        },
+                        yVolume: { display: false, position: 'right', beginAtZero: true }
+                    }
+                },
+                plugins: plugins
+            });
+        }
 
         function notifyParentTimelineChange(reason = "graph-structural") {
             try {
@@ -843,7 +1652,7 @@
         }
 
         function getMovingAverageColor(period) {
-            return ({ 20: '#e11d48', 60: '#f59e0b', 120: '#10b981', 224: '#7c3aed' })[period] || '#64748b';
+            return ({ 5: '#3b82f6', 20: '#e11d48', 60: '#f59e0b', 120: '#10b981', 224: '#7c3aed', 448: '#1e293b' })[period] || '#64748b';
         }
 
         function calculateMovingAverage(points, period, labels) {
@@ -1595,6 +2404,51 @@
             updateQuarterHubUI();
         }
 
+        // --- Hybrid View Logic ---
+        function toggleLiveTVInReport(enabled) {
+            const section = document.getElementById('reportLiveTVSection');
+            if (enabled) {
+                section.classList.remove('hidden');
+                renderReportLiveTVGrid();
+            } else {
+                section.classList.add('hidden');
+            }
+        }
+
+        function renderReportLiveTVGrid() {
+            const grid = document.getElementById('reportLiveTVGrid');
+            if (!grid) return;
+            grid.innerHTML = '';
+            if (compareTickers.length === 0) return;
+
+            const columns = compareTickers.length >= 2 ? 2 : 1;
+            grid.style.gridTemplateColumns = `repeat(${columns}, 1fr)`;
+
+            compareTickers.forEach(symbol => {
+                const container = document.createElement('div');
+                container.className = "bg-slate-50 rounded-2xl border border-slate-200 overflow-hidden shadow-sm h-[450px]";
+                const widgetId = `report-tv-widget-${symbol.replace(/[^a-zA-Z0-9]/g, '-')}`;
+                container.innerHTML = `<div id="${widgetId}" class="w-full h-full"></div>`;
+                grid.appendChild(container);
+
+                new TradingView.widget({
+                    "autosize": true,
+                    "symbol": symbol,
+                    "interval": "D",
+                    "timezone": "Etc/UTC",
+                    "theme": "light",
+                    "style": "1",
+                    "locale": "en",
+                    "toolbar_bg": "#f1f5f9",
+                    "enable_publishing": false,
+                    "hide_top_toolbar": false,
+                    "hide_legend": false,
+                    "save_image": false,
+                    "container_id": widgetId
+                });
+            });
+        }
+
         // --- Intelligent Chart Engine ---
         async function buildTimeline() {
             const start = document.getElementById('startDate').value;
@@ -1626,6 +2480,12 @@
                     outSub.innerHTML += `<div class="flex items-center gap-2 font-black text-[11px]" style="color:${COLORS[i % COLORS.length]}"><span>${t}</span><span class="text-slate-300">|</span><span class="text-slate-400 font-bold uppercase">${allTickerData[t]?.company || t}</span></div>`;
                 });
                 renderChart(); refreshEventUI(); renderUnifiedSearch(); renderHistoryList(); renderGlobalEvents();
+                
+                // Hybrid View Sync
+                if (document.getElementById('showLiveTVInReport').checked) {
+                    renderReportLiveTVGrid();
+                }
+
                 if (quarterOptions.enabled && compareTickers.length === 1) {
                     syncQuarterRangeWithData();
                     runQuarterSymmetry();
