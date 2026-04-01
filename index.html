@@ -1,5 +1,6 @@
 <!DOCTYPE html>
 <html lang="ko">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -10,61 +11,255 @@
     <script src="https://cdnjs.cloudflare.com/ajax/libs/html-to-image/1.11.11/html-to-image.min.js"></script>
     <style>
         @import url('https://fonts.googleapis.com/css2?family=Pretendard:wght@400;700;900&display=swap');
-        body { font-family: 'Pretendard', sans-serif; letter-spacing: -0.02em; background-color: #f1f5f9; scroll-behavior: smooth; }
-        .report-canvas { width: 1080px; min-height: 1600px; background: white; padding: 60px; position: relative; }
-        .loading-overlay { display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(255,255,255,0.95); z-index:9999; justify-content:center; align-items:center; flex-direction:column; }
-        .custom-scroll::-webkit-scrollbar { width: 4px; }
-        .custom-scroll::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 10px; }
-        
-        @keyframes highlight-card {
-            0% { border-color: #2563eb; transform: scale(1); }
-            50% { border-color: #3b82f6; transform: scale(1.03); box-shadow: 0 0 30px rgba(37,99,235,0.3); }
-            100% { border-color: #e2e8f0; transform: scale(1); }
-        }
-        .focused-card { animation: highlight-card 1.5s ease-in-out 2; border-width: 3px !important; z-index: 20; }
-        .benchmark-btn { padding: 5px; background: white; border: 1px solid #e2e8f0; border-radius: 6px; font-size: 8px; font-weight: 900; color: #64748b; text-transform: uppercase; transition: all 0.2s; position: relative; }
-        .benchmark-btn:hover { border-color: #2563eb; color: #2563eb; background: #eff6ff; }
-        .benchmark-del { position: absolute; top: -5px; right: -5px; background: #ef4444; color: white; width: 12px; height: 12px; border-radius: 50%; display: none; align-items: center; justify-content: center; font-size: 8px; }
-        .benchmark-btn:hover .benchmark-del { display: flex; }
 
-        .benchmark-btn:hover { border-color: #2563eb; color: #2563eb; background: #eff6ff; transform: translateY(-1px); }
-        
-        #intelTooltip { position: fixed; pointer-events: auto; display: none; z-index: 1000; background: rgba(15, 23, 42, 0.95); color: white; padding: 16px; border-radius: 16px; box-shadow: 0 20px 40px rgba(0,0,0,0.4); min-width: 300px; max-width: min(420px, calc(100vw - 24px)); backdrop-filter: blur(8px); border: 1px solid rgba(255,255,255,0.1); }
-        .pop-item { border-bottom: 1px solid rgba(255,255,255,0.1); padding: 8px 0; }
-        .pop-item:last-child { border-bottom: none; }
-        .compare-item { border-bottom: 1px solid rgba(255,255,255,0.08); padding: 8px 0; }
-        .compare-item:last-child { border-bottom: none; }
-        .compare-action-btn { border: 1px solid rgba(255,255,255,0.16); background: rgba(255,255,255,0.08); color: white; border-radius: 999px; padding: 5px 10px; font-size: 9px; font-weight: 900; text-transform: uppercase; letter-spacing: 0.12em; cursor: pointer; transition: all 0.2s; }
-        .compare-action-btn:hover { background: rgba(255,255,255,0.16); border-color: rgba(255,255,255,0.28); }
-        .section-header { cursor: pointer; user-select: none; }
-        .event-type-option input:checked + label { background: #ffffff; color: #0f172a; box-shadow: 0 1px 3px rgba(15, 23, 42, 0.08); }
-        .event-type-option input:focus-visible + label { outline: 2px solid #2563eb; outline-offset: 2px; }
-        .panel-toggle { padding: 10px 14px; border-radius: 999px; background: #ffffff; border: 1px solid #cbd5e1; font-size: 10px; font-weight: 900; text-transform: uppercase; letter-spacing: 0.12em; color: #475569; transition: all 0.2s; }
-        .panel-toggle:hover { background: #eff6ff; color: #2563eb; border-color: #93c5fd; }
-        .search-result-card:hover { border-color: #2563eb; }
-        
-        @keyframes pulse-outlier {
-            0% { box-shadow: 0 0 0 0 rgba(239, 68, 68, 0.7); transform: scale(1); }
-            70% { box-shadow: 0 0 0 10px rgba(239, 68, 68, 0); transform: scale(1.05); }
-            100% { box-shadow: 0 0 0 0 rgba(239, 68, 68, 0); transform: scale(1); }
+        body {
+            font-family: 'Pretendard', sans-serif;
+            letter-spacing: -0.02em;
+            background-color: #f1f5f9;
+            scroll-behavior: smooth;
         }
-        .outlier-pulse { animation: pulse-outlier 2s infinite; z-index: 10; }
-        
+
+        .report-canvas {
+            width: 1080px;
+            min-height: 1600px;
+            background: white;
+            padding: 60px;
+            position: relative;
+        }
+
+        .loading-overlay {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(255, 255, 255, 0.95);
+            z-index: 9999;
+            justify-content: center;
+            align-items: center;
+            flex-direction: column;
+        }
+
+        .custom-scroll::-webkit-scrollbar {
+            width: 4px;
+        }
+
+        .custom-scroll::-webkit-scrollbar-thumb {
+            background: #cbd5e1;
+            border-radius: 10px;
+        }
+
+        @keyframes highlight-card {
+            0% {
+                border-color: #2563eb;
+                transform: scale(1);
+            }
+
+            50% {
+                border-color: #3b82f6;
+                transform: scale(1.03);
+                box-shadow: 0 0 30px rgba(37, 99, 235, 0.3);
+            }
+
+            100% {
+                border-color: #e2e8f0;
+                transform: scale(1);
+            }
+        }
+
+        .focused-card {
+            animation: highlight-card 1.5s ease-in-out 2;
+            border-width: 3px !important;
+            z-index: 20;
+        }
+
+        .benchmark-btn {
+            padding: 5px;
+            background: white;
+            border: 1px solid #e2e8f0;
+            border-radius: 6px;
+            font-size: 8px;
+            font-weight: 900;
+            color: #64748b;
+            text-transform: uppercase;
+            transition: all 0.2s;
+            position: relative;
+        }
+
+        .benchmark-btn:hover {
+            border-color: #2563eb;
+            color: #2563eb;
+            background: #eff6ff;
+        }
+
+        .benchmark-del {
+            position: absolute;
+            top: -5px;
+            right: -5px;
+            background: #ef4444;
+            color: white;
+            width: 12px;
+            height: 12px;
+            border-radius: 50%;
+            display: none;
+            align-items: center;
+            justify-content: center;
+            font-size: 8px;
+        }
+
+        .benchmark-btn:hover .benchmark-del {
+            display: flex;
+        }
+
+        .benchmark-btn:hover {
+            border-color: #2563eb;
+            color: #2563eb;
+            background: #eff6ff;
+            transform: translateY(-1px);
+        }
+
+        #intelTooltip {
+            position: fixed;
+            pointer-events: auto;
+            display: none;
+            z-index: 1000;
+            background: rgba(15, 23, 42, 0.95);
+            color: white;
+            padding: 16px;
+            border-radius: 16px;
+            box-shadow: 0 20px 40px rgba(0, 0, 0, 0.4);
+            min-width: 300px;
+            max-width: min(420px, calc(100vw - 24px));
+            backdrop-filter: blur(8px);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+        }
+
+        .pop-item {
+            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+            padding: 8px 0;
+        }
+
+        .pop-item:last-child {
+            border-bottom: none;
+        }
+
+        .compare-item {
+            border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+            padding: 8px 0;
+        }
+
+        .compare-item:last-child {
+            border-bottom: none;
+        }
+
+        .compare-action-btn {
+            border: 1px solid rgba(255, 255, 255, 0.16);
+            background: rgba(255, 255, 255, 0.08);
+            color: white;
+            border-radius: 999px;
+            padding: 5px 10px;
+            font-size: 9px;
+            font-weight: 900;
+            text-transform: uppercase;
+            letter-spacing: 0.12em;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .compare-action-btn:hover {
+            background: rgba(255, 255, 255, 0.16);
+            border-color: rgba(255, 255, 255, 0.28);
+        }
+
+        .section-header {
+            cursor: pointer;
+            user-select: none;
+        }
+
+        .event-type-option input:checked+label {
+            background: #ffffff;
+            color: #0f172a;
+            box-shadow: 0 1px 3px rgba(15, 23, 42, 0.08);
+        }
+
+        .event-type-option input:focus-visible+label {
+            outline: 2px solid #2563eb;
+            outline-offset: 2px;
+        }
+
+        .panel-toggle {
+            padding: 10px 14px;
+            border-radius: 999px;
+            background: #ffffff;
+            border: 1px solid #cbd5e1;
+            font-size: 10px;
+            font-weight: 900;
+            text-transform: uppercase;
+            letter-spacing: 0.12em;
+            color: #475569;
+            transition: all 0.2s;
+        }
+
+        .panel-toggle:hover {
+            background: #eff6ff;
+            color: #2563eb;
+            border-color: #93c5fd;
+        }
+
+        .search-result-card:hover {
+            border-color: #2563eb;
+        }
+
+        @keyframes pulse-outlier {
+            0% {
+                box-shadow: 0 0 0 0 rgba(239, 68, 68, 0.7);
+                transform: scale(1);
+            }
+
+            70% {
+                box-shadow: 0 0 0 10px rgba(239, 68, 68, 0);
+                transform: scale(1.05);
+            }
+
+            100% {
+                box-shadow: 0 0 0 0 rgba(239, 68, 68, 0);
+                transform: scale(1);
+            }
+        }
+
+        .outlier-pulse {
+            animation: pulse-outlier 2s infinite;
+            z-index: 10;
+        }
+
         /* 유니버스 컨트롤 레이아웃 최적화 */
-        .univ-controls-wrapper { display: flex; flex-direction: column; gap: 1rem; width: 100%; }
-        .univ-control-row { display: flex; flex-wrap: wrap; gap: 0.75rem; align-items: center; width: 100%; }
-        
-        .universe-control-card { 
-            background: white; 
-            padding: 1rem 1.25rem; 
-            border-radius: 1.5rem; 
-            border: 2px solid #f1f5f9; 
-            box-shadow: 0 4px 12px rgba(15, 23, 42, 0.03); 
-            display: flex; 
+        .univ-controls-wrapper {
+            display: flex;
+            flex-direction: column;
+            gap: 1rem;
+            width: 100%;
+        }
+
+        .univ-control-row {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 0.75rem;
+            align-items: center;
+            width: 100%;
+        }
+
+        .universe-control-card {
+            background: white;
+            padding: 1rem 1.25rem;
+            border-radius: 1.5rem;
+            border: 2px solid #f1f5f9;
+            box-shadow: 0 4px 12px rgba(15, 23, 42, 0.03);
+            display: flex;
             align-items: center;
             gap: 0.75rem;
         }
-        
+
         /* 메인 리포트 엔진 스위치 */
         .engine-switch-container {
             display: flex;
@@ -73,6 +268,7 @@
             border-radius: 1rem;
             border: 1px solid #e2e8f0;
         }
+
         .engine-switch-btn {
             padding: 0.5rem 1rem;
             border-radius: 0.75rem;
@@ -82,46 +278,178 @@
             letter-spacing: 0.05em;
             transition: all 0.2s;
         }
-        .engine-switch-btn.active { background: white; color: #0f172a; shadow: 0 2px 4px rgba(0,0,0,0.05); }
-        .engine-switch-btn.inactive { color: #94a3b8; }
+
+        .engine-switch-btn.active {
+            background: white;
+            color: #0f172a;
+            shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+        }
+
+        .engine-switch-btn.inactive {
+            color: #94a3b8;
+        }
+
+        /* 그리드 내 차트 컨테이너 높이와 너비 강제 확보 */
+        .univ-chart-wrapper {
+            position: relative;
+            width: 100%;
+            height: 320px;
+            /* 명시적 높이 설정 */
+            display: block;
+        }
+
+        #universeGrid {
+            display: grid !important;
+            gap: 1.5rem;
+            width: 100%;
+        }
 
         /* 모바일 그리드 최적화 */
         @media (max-width: 640px) {
-            #universeGrid { grid-template-columns: 1fr !important; }
-            .universe-card-header { flex-direction: column; align-items: flex-start !important; gap: 0.5rem; }
+            #universeGrid {
+                grid-template-columns: 1fr !important;
+            }
+
+            .universe-card-header {
+                flex-direction: column;
+                align-items: flex-start !important;
+                gap: 0.5rem;
+            }
         }
 
-        .quarter-toggle:checked + label { background: #0f172a; color: white; border-color: #0f172a; }
-        .quarter-card { background: white; border: 1px solid #e2e8f0; border-radius: 1.75rem; box-shadow: 0 12px 28px rgba(15, 23, 42, 0.06); }
-        .quarter-matrix { width: 100%; border-collapse: collapse; font-size: 11px; text-align: center; }
-        .quarter-matrix th { background: #f8fafc; border: 1px solid #e2e8f0; padding: 10px; font-weight: 900; color: #64748b; text-transform: uppercase; }
-        .quarter-matrix td { border: 1px solid #e2e8f0; padding: 9px; font-weight: 700; }
-        .quarter-major { background: #fffbeb; border-top: 2px solid #f59e0b; border-bottom: 2px solid #f59e0b; }
-        .quarter-current { background: #f0fdf4; border: 2px solid #22c55e; }
-        .event-card-actions { opacity: 0; transition: all 0.2s; }
-        .group:hover .event-card-actions { opacity: 1; }
+        .quarter-toggle:checked+label {
+            background: #0f172a;
+            color: white;
+            border-color: #0f172a;
+        }
+
+        .quarter-card {
+            background: white;
+            border: 1px solid #e2e8f0;
+            border-radius: 1.75rem;
+            box-shadow: 0 12px 28px rgba(15, 23, 42, 0.06);
+        }
+
+        .quarter-matrix {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 11px;
+            text-align: center;
+        }
+
+        .quarter-matrix th {
+            background: #f8fafc;
+            border: 1px solid #e2e8f0;
+            padding: 10px;
+            font-weight: 900;
+            color: #64748b;
+            text-transform: uppercase;
+        }
+
+        .quarter-matrix td {
+            border: 1px solid #e2e8f0;
+            padding: 9px;
+            font-weight: 700;
+        }
+
+        .quarter-major {
+            background: #fffbeb;
+            border-top: 2px solid #f59e0b;
+            border-bottom: 2px solid #f59e0b;
+        }
+
+        .quarter-current {
+            background: #f0fdf4;
+            border: 2px solid #22c55e;
+        }
+
+        .event-card-actions {
+            opacity: 0;
+            transition: all 0.2s;
+        }
+
+        .group:hover .event-card-actions {
+            opacity: 1;
+        }
 
         @media (min-width: 1280px) {
+
             body.panel-left-hidden #centerPanel,
-            body.panel-right-hidden #centerPanel { flex: 1.15 1 0%; }
+            body.panel-right-hidden #centerPanel {
+                flex: 1.15 1 0%;
+            }
+
             body.panel-left-hidden #captureArea,
-            body.panel-right-hidden #captureArea { width: min(1320px, 100%); }
-            body.panel-left-hidden.panel-right-hidden #centerPanel { flex: 1 1 100%; }
-            body.panel-left-hidden.panel-right-hidden #captureArea { width: min(1680px, 100%); }
+            body.panel-right-hidden #captureArea {
+                width: min(1320px, 100%);
+            }
+
+            body.panel-left-hidden.panel-right-hidden #centerPanel {
+                flex: 1 1 100%;
+            }
+
+            body.panel-left-hidden.panel-right-hidden #captureArea {
+                width: min(1680px, 100%);
+            }
         }
 
         @media (max-width: 768px) {
-            body { padding: 12px !important; }
-            .report-canvas { width: 100%; min-height: auto; padding: 20px 16px 24px; }
-            .panel-toggle { width: 100%; padding: 8px 12px; font-size: 9px; letter-spacing: 0.08em; }
-            #intelTooltip { min-width: 0; width: calc(100vw - 24px); }
-            #leftPanel, #rightPanel { position: static; top: auto; }
-            #centerPanel { padding: 12px; border-radius: 1.75rem; overflow-x: hidden; }
-            #chartContainer { height: 340px !important; margin-bottom: 56px; }
-            #benchmarkContainer { grid-template-columns: repeat(2, minmax(0, 1fr)); }
-            .quarter-card { border-radius: 1.25rem; }
-            .quarter-matrix { font-size: 10px; }
-            .quarter-matrix th, .quarter-matrix td { padding: 8px 6px; }
+            body {
+                padding: 12px !important;
+            }
+
+            .report-canvas {
+                width: 100%;
+                min-height: auto;
+                padding: 20px 16px 24px;
+            }
+
+            .panel-toggle {
+                width: 100%;
+                padding: 8px 12px;
+                font-size: 9px;
+                letter-spacing: 0.08em;
+            }
+
+            #intelTooltip {
+                min-width: 0;
+                width: calc(100vw - 24px);
+            }
+
+            #leftPanel,
+            #rightPanel {
+                position: static;
+                top: auto;
+            }
+
+            #centerPanel {
+                padding: 12px;
+                border-radius: 1.75rem;
+                overflow-x: hidden;
+            }
+
+            #chartContainer {
+                height: 340px !important;
+                margin-bottom: 56px;
+            }
+
+            #benchmarkContainer {
+                grid-template-columns: repeat(2, minmax(0, 1fr));
+            }
+
+            .quarter-card {
+                border-radius: 1.25rem;
+            }
+
+            .quarter-matrix {
+                font-size: 10px;
+            }
+
+            .quarter-matrix th,
+            .quarter-matrix td {
+                padding: 8px 6px;
+            }
+
             #captureArea .report-footer {
                 position: static;
                 left: auto;
@@ -133,14 +461,27 @@
                 gap: 8px;
                 align-items: flex-start;
             }
-            #captureArea h1 { font-size: 2.25rem !important; line-height: 0.95; }
-            #outSub { gap: 10px; }
-            #outSub > div { width: 100%; }
-            .event-card-actions { opacity: 1; }
-        }
 
+            #captureArea h1 {
+                font-size: 2.25rem !important;
+                line-height: 0.95;
+            }
+
+            #outSub {
+                gap: 10px;
+            }
+
+            #outSub>div {
+                width: 100%;
+            }
+
+            .event-card-actions {
+                opacity: 1;
+            }
+        }
     </style>
 </head>
+
 <body class="p-3 sm:p-4 lg:p-6 text-slate-900">
 
     <div id="loading" class="loading-overlay">
@@ -150,10 +491,12 @@
 
     <!-- 고성능 통합 인텔 툴팁 -->
     <div id="intelTooltip">
-        <div class="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] mb-3 flex justify-between items-center border-b border-white/10 pb-2 gap-2">
+        <div
+            class="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] mb-3 flex justify-between items-center border-b border-white/10 pb-2 gap-2">
             <span id="ttDate">DATE</span>
             <div class="flex items-center gap-2">
-                <button id="ttClearBtn" type="button" class="compare-action-btn hidden" onclick="clearPinnedComparison()">Cancel</button>
+                <button id="ttClearBtn" type="button" class="compare-action-btn hidden"
+                    onclick="clearPinnedComparison()">Cancel</button>
                 <span class="text-blue-400">INTELLIGENCE UNIT</span>
                 <button type="button" class="compare-action-btn" onclick="closeIntelTooltip()">Close</button>
             </div>
@@ -175,209 +518,301 @@
         </div>
     </div>
 
-    <div class="max-w-[2400px] mx-auto mb-4 flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3">
+    <div
+        class="max-w-[2400px] mx-auto mb-4 flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3">
         <div class="flex gap-2">
-            <button id="viewReportBtn" onclick="switchView('report')" class="px-6 py-2 rounded-full bg-slate-900 text-white text-[10px] font-black uppercase tracking-widest shadow-lg transition-all">Report View</button>
-            <button id="viewUniverseBtn" onclick="switchView('universe')" class="px-6 py-2 rounded-full bg-white border border-slate-200 text-slate-500 text-[10px] font-black uppercase tracking-widest hover:bg-slate-50 transition-all">Universe Grid</button>
+            <button id="viewReportBtn" onclick="switchView('report')"
+                class="px-6 py-2 rounded-full bg-slate-900 text-white text-[10px] font-black uppercase tracking-widest shadow-lg transition-all">Report
+                View</button>
+            <button id="viewUniverseBtn" onclick="switchView('universe')"
+                class="px-6 py-2 rounded-full bg-white border border-slate-200 text-slate-500 text-[10px] font-black uppercase tracking-widest hover:bg-slate-50 transition-all">Universe
+                Grid</button>
         </div>
-        <div class="text-[10px] font-black uppercase tracking-[0.3em] text-slate-400 text-center">Adaptive Workspace</div>
+        <div class="text-[10px] font-black uppercase tracking-[0.3em] text-slate-400 text-center">Adaptive Workspace
+        </div>
         <div class="flex gap-2">
             <button id="leftPanelToggle" onclick="toggleSidePanel('left')" class="panel-toggle">Hide Left Panel</button>
-            <button id="rightPanelToggle" onclick="toggleSidePanel('right')" class="panel-toggle">Hide Right Panel</button>
+            <button id="rightPanelToggle" onclick="toggleSidePanel('right')" class="panel-toggle">Hide Right
+                Panel</button>
         </div>
     </div>
 
     <div class="max-w-[2400px] mx-auto flex flex-col xl:flex-row gap-6">
-        
+
         <!-- 1. 좌측 컨트롤러 (Dual-Hub) -->
         <div id="leftPanel" class="w-full xl:w-[420px] space-y-5 h-fit xl:sticky xl:top-6 transition-all">
 
             <!-- Comparison Hub -->
             <div class="bg-white p-6 rounded-[2.5rem] shadow-xl border border-slate-200 overflow-hidden">
-                <div class="section-header flex justify-between items-center mb-4" onclick="toggleSection('comparison-hub')">
+                <div class="section-header flex justify-between items-center mb-4"
+                    onclick="toggleSection('comparison-hub')">
                     <h3 class="text-xs font-black tracking-widest uppercase italic text-slate-400">Comparison Hub</h3>
                     <span id="comparison-hub-icon" class="text-[10px] text-slate-300">▲</span>
                 </div>
                 <div id="comparison-hub" class="space-y-4">
                     <div class="space-y-4 p-5 bg-slate-50 rounded-[2rem] border border-slate-100 shadow-inner">
                         <div class="relative">
-                            <input id="tickerName" type="text" oninput="renderComparisonSearchPreview()" placeholder="Search Name or Ticker..." class="w-full p-4 rounded-2xl border-2 border-white shadow-sm font-bold text-sm outline-none focus:border-blue-500 transition-all text-center">
-                            <div id="comparisonSearchResults" class="absolute top-full left-0 right-0 mt-2 z-[110] space-y-2 hidden"></div>
+                            <input id="tickerName" type="text" oninput="renderComparisonSearchPreview()"
+                                placeholder="Search Name or Ticker..."
+                                class="w-full p-4 rounded-2xl border-2 border-white shadow-sm font-bold text-sm outline-none focus:border-blue-500 transition-all text-center">
+                            <div id="comparisonSearchResults"
+                                class="absolute top-full left-0 right-0 mt-2 z-[110] space-y-2 hidden"></div>
                         </div>
-                        
+
                         <div class="grid grid-cols-1 sm:grid-cols-2 gap-2">
-                            <div class="flex items-center bg-white border-2 border-white shadow-sm rounded-xl px-4 py-2">
+                            <div
+                                class="flex items-center bg-white border-2 border-white shadow-sm rounded-xl px-4 py-2">
                                 <span class="text-[9px] font-black text-slate-300 mr-2 uppercase">Code</span>
-                                <input id="tickerCodeInput" type="text" placeholder="TICKER" class="w-full bg-transparent font-black text-slate-900 uppercase tracking-tighter text-xs outline-none">
+                                <input id="tickerCodeInput" type="text" placeholder="TICKER"
+                                    class="w-full bg-transparent font-black text-slate-900 uppercase tracking-tighter text-xs outline-none">
                             </div>
-                            <button onclick="webMapTickerReport()" class="w-full bg-slate-900 text-white rounded-xl font-black text-[10px] hover:bg-black italic tracking-widest uppercase py-3">Set Main Asset</button>
+                            <button onclick="webMapTickerReport()"
+                                class="w-full bg-slate-900 text-white rounded-xl font-black text-[10px] hover:bg-black italic tracking-widest uppercase py-3">Set
+                                Main Asset</button>
                         </div>
 
                         <div class="grid grid-cols-2 gap-2 pt-2 border-t border-slate-200/50">
-                            <button onclick="addToComparison()" class="flex-1 bg-blue-600 text-white py-3 rounded-xl font-black text-[10px] hover:bg-blue-700 shadow-md transition-all uppercase tracking-widest">+ Compare</button>
+                            <button onclick="addToComparison()"
+                                class="flex-1 bg-blue-600 text-white py-3 rounded-xl font-black text-[10px] hover:bg-blue-700 shadow-md transition-all uppercase tracking-widest">+
+                                Compare</button>
                             <div class="relative flex-1 group">
-                                <button onclick="addTickerToActiveUniverse()" class="w-full bg-emerald-600 text-white py-3 rounded-xl font-black text-[10px] hover:bg-emerald-700 shadow-md transition-all uppercase tracking-widest">+ Universe</button>
-                                <div id="activeUniverseNameIndicator" class="absolute -bottom-1 left-1/2 -translate-x-1/2 translate-y-full pt-1 text-[8px] font-black text-emerald-600 uppercase tracking-tighter opacity-70">No Universe Active</div>
+                                <button onclick="addTickerToActiveUniverse()"
+                                    class="w-full bg-emerald-600 text-white py-3 rounded-xl font-black text-[10px] hover:bg-emerald-700 shadow-md transition-all uppercase tracking-widest">+
+                                    Universe</button>
+                                <div id="activeUniverseNameIndicator"
+                                    class="absolute -bottom-1 left-1/2 -translate-x-1/2 translate-y-full pt-1 text-[8px] font-black text-emerald-600 uppercase tracking-tighter opacity-70">
+                                    No Universe Active</div>
                             </div>
                         </div>
 
-                        <div id="priceStatus" class="mt-2 text-[10px] font-black text-blue-600 flex justify-between px-1"><span>LIVE: -</span><span id="syncTime" class="text-slate-400 font-bold uppercase tracking-tighter">READY</span></div>
-                        
-                        <div class="flex items-center justify-between bg-white p-3 rounded-xl border border-slate-200 mt-2">
-                            <span class="text-[9px] font-black text-slate-500 uppercase italic">Embed Live TV Charts</span>
+                        <div id="priceStatus"
+                            class="mt-2 text-[10px] font-black text-blue-600 flex justify-between px-1"><span>LIVE:
+                                -</span><span id="syncTime"
+                                class="text-slate-400 font-bold uppercase tracking-tighter">READY</span></div>
+
+                        <div
+                            class="flex items-center justify-between bg-white p-3 rounded-xl border border-slate-200 mt-2">
+                            <span class="text-[9px] font-black text-slate-500 uppercase italic">Embed Live TV
+                                Charts</span>
                             <label class="relative inline-flex items-center cursor-pointer">
-                                <input type="checkbox" id="showLiveTVInReport" onchange="toggleLiveTVInReport(this.checked)" class="sr-only peer">
-                                <div class="w-8 h-4 bg-slate-200 rounded-full peer peer-checked:bg-slate-900 after:content-[''] after:absolute after:top-[1px] after:left-[1px] after:bg-white after:rounded-full after:h-3.5 after:w-3.5 after:transition-all peer-checked:after:translate-x-full"></div>
+                                <input type="checkbox" id="showLiveTVInReport"
+                                    onchange="toggleLiveTVInReport(this.checked)" class="sr-only peer">
+                                <div
+                                    class="w-8 h-4 bg-slate-200 rounded-full peer peer-checked:bg-slate-900 after:content-[''] after:absolute after:top-[1px] after:left-[1px] after:bg-white after:rounded-full after:h-3.5 after:w-3.5 after:transition-all peer-checked:after:translate-x-full">
+                                </div>
                             </label>
                         </div>
 
                         <div class="pt-2 border-t border-slate-200 mt-2">
                             <div class="flex justify-between items-center mb-2 px-1">
-                                <span class="text-[9px] font-black text-slate-400 uppercase tracking-widest">Global Benchmarks</span>
-                                <button onclick="addNewBenchmark()" class="text-[9px] font-bold text-blue-500 hover:underline">+ New</button>
+                                <span class="text-[9px] font-black text-slate-400 uppercase tracking-widest">Global
+                                    Benchmarks</span>
+                                <button onclick="addNewBenchmark()"
+                                    class="text-[9px] font-bold text-blue-500 hover:underline">+ New</button>
                             </div>
                             <div id="benchmarkContainer" class="grid grid-cols-4 gap-1"></div>
                         </div>
                     </div>
                     <div id="comparisonTags" class="flex flex-wrap gap-2 min-h-[10px]"></div>
                     <div class="space-y-3 p-4 bg-slate-50 rounded-[2rem] border border-slate-100 shadow-inner">
-                        <div class="section-header flex items-center justify-between gap-3" onclick="toggleSection('chart-mode-panel')">
-                            <span class="text-[9px] font-black text-slate-400 uppercase tracking-widest">Chart Mode</span>
+                        <div class="section-header flex items-center justify-between gap-3"
+                            onclick="toggleSection('chart-mode-panel')">
+                            <span class="text-[9px] font-black text-slate-400 uppercase tracking-widest">Chart
+                                Mode</span>
                             <span id="chart-mode-panel-icon" class="text-[10px] text-slate-300">▼</span>
                         </div>
                         <div id="chart-mode-panel" class="hidden space-y-3">
                             <div class="flex items-center justify-between gap-3">
                                 <span class="text-[9px] font-black text-slate-400 uppercase tracking-widest">Mode</span>
-                                <span id="chartModeHint" class="text-[9px] font-black text-slate-300 uppercase">Line</span>
+                                <span id="chartModeHint"
+                                    class="text-[9px] font-black text-slate-300 uppercase">Line</span>
                             </div>
                             <div class="flex gap-1 p-1 bg-white rounded-xl border border-slate-200">
-                                <button id="chartModeLineBtn" onclick="setChartMode('line')" class="flex-1 py-2 rounded-lg text-[10px] font-black transition-all">Line</button>
-                                <button id="chartModeCandleBtn" onclick="setChartMode('candle')" class="flex-1 py-2 rounded-lg text-[10px] font-black transition-all">Candle</button>
+                                <button id="chartModeLineBtn" onclick="setChartMode('line')"
+                                    class="flex-1 py-2 rounded-lg text-[10px] font-black transition-all">Line</button>
+                                <button id="chartModeCandleBtn" onclick="setChartMode('candle')"
+                                    class="flex-1 py-2 rounded-lg text-[10px] font-black transition-all">Candle</button>
                             </div>
                             <div class="flex items-center justify-between gap-3">
-                                <span class="text-[9px] font-black text-slate-400 uppercase tracking-widest">Time Frame</span>
-                                <span id="timeframeHint" class="text-[9px] font-black text-slate-300 uppercase">Daily</span>
+                                <span class="text-[9px] font-black text-slate-400 uppercase tracking-widest">Time
+                                    Frame</span>
+                                <span id="timeframeHint"
+                                    class="text-[9px] font-black text-slate-300 uppercase">Daily</span>
                             </div>
                             <div class="flex gap-1 p-1 bg-white rounded-xl border border-slate-200">
-                                <button id="timeframeDayBtn" onclick="setChartTimeframe('day')" class="flex-1 py-2 rounded-lg text-[10px] font-black transition-all">Day</button>
-                                <button id="timeframeWeekBtn" onclick="setChartTimeframe('week')" class="flex-1 py-2 rounded-lg text-[10px] font-black transition-all">Week</button>
-                                <button id="timeframeMonthBtn" onclick="setChartTimeframe('month')" class="flex-1 py-2 rounded-lg text-[10px] font-black transition-all">Month</button>
+                                <button id="timeframeDayBtn" onclick="setChartTimeframe('day')"
+                                    class="flex-1 py-2 rounded-lg text-[10px] font-black transition-all">Day</button>
+                                <button id="timeframeWeekBtn" onclick="setChartTimeframe('week')"
+                                    class="flex-1 py-2 rounded-lg text-[10px] font-black transition-all">Week</button>
+                                <button id="timeframeMonthBtn" onclick="setChartTimeframe('month')"
+                                    class="flex-1 py-2 rounded-lg text-[10px] font-black transition-all">Month</button>
                             </div>
                             <div class="flex items-center justify-between gap-3 px-1">
                                 <div>
-                                    <div class="text-[9px] font-black text-slate-400 uppercase tracking-widest">Volume Overlay</div>
+                                    <div class="text-[9px] font-black text-slate-400 uppercase tracking-widest">Volume
+                                        Overlay</div>
                                     <div class="text-[9px] font-bold text-slate-300 uppercase">Single Asset Only</div>
                                 </div>
-                                <button id="volumeToggleBtn" onclick="toggleVolumeOverlay()" class="px-3 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all">Off</button>
+                                <button id="volumeToggleBtn" onclick="toggleVolumeOverlay()"
+                                    class="px-3 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all">Off</button>
                             </div>
                             <div class="grid grid-cols-[minmax(0,1fr)_auto] gap-2 items-center">
-                                <input id="guideLineValue" type="number" step="0.1" placeholder="Horizontal line value" class="w-full text-center text-[10px] font-black bg-white border border-slate-200 rounded-xl p-3 outline-none text-slate-700">
-                                <button onclick="addGuideLine()" class="px-4 py-3 rounded-xl bg-slate-900 text-white text-[10px] font-black uppercase tracking-widest hover:bg-black transition-all">+ Line</button>
+                                <input id="guideLineValue" type="number" step="0.1" placeholder="Horizontal line value"
+                                    class="w-full text-center text-[10px] font-black bg-white border border-slate-200 rounded-xl p-3 outline-none text-slate-700">
+                                <button onclick="addGuideLine()"
+                                    class="px-4 py-3 rounded-xl bg-slate-900 text-white text-[10px] font-black uppercase tracking-widest hover:bg-black transition-all">+
+                                    Line</button>
                             </div>
                             <div class="grid grid-cols-[92px_minmax(0,1fr)] gap-2 items-center">
-                                <input id="guideLineColor" type="color" value="#0f172a" class="w-full h-11 bg-white border border-slate-200 rounded-xl p-1 cursor-pointer">
-                                <input id="guideLineNote" type="text" placeholder="Line memo" class="w-full text-[10px] font-black bg-white border border-slate-200 rounded-xl p-3 outline-none text-slate-700 uppercase tracking-wide">
+                                <input id="guideLineColor" type="color" value="#0f172a"
+                                    class="w-full h-11 bg-white border border-slate-200 rounded-xl p-1 cursor-pointer">
+                                <input id="guideLineNote" type="text" placeholder="Line memo"
+                                    class="w-full text-[10px] font-black bg-white border border-slate-200 rounded-xl p-3 outline-none text-slate-700 uppercase tracking-wide">
                             </div>
                             <div class="space-y-2 border-t border-slate-200 pt-3">
                                 <div class="flex items-center justify-between gap-3 px-1">
                                     <div>
-                                        <div class="text-[9px] font-black text-slate-400 uppercase tracking-widest">Moving Averages</div>
-                                        <div id="movingAverageHint" class="text-[9px] font-bold text-slate-300 uppercase">Single Asset Only</div>
+                                        <div class="text-[9px] font-black text-slate-400 uppercase tracking-widest">
+                                            Moving Averages</div>
+                                        <div id="movingAverageHint"
+                                            class="text-[9px] font-bold text-slate-300 uppercase">Single Asset Only
+                                        </div>
                                     </div>
-                                    <div class="text-[8px] font-black text-slate-300 uppercase">20 / 60 / 120 / 224</div>
+                                    <div class="text-[8px] font-black text-slate-300 uppercase">20 / 60 / 120 / 224
+                                    </div>
                                 </div>
                                 <div id="movingAverageControls" class="grid grid-cols-2 gap-2"></div>
                             </div>
                             <div class="flex items-center justify-between gap-3 px-1">
                                 <div>
-                                    <div class="text-[9px] font-black text-slate-400 uppercase tracking-widest">Draw On Chart</div>
-                                    <div id="guideLineDrawHint" class="text-[9px] font-bold text-slate-300 uppercase">Click Chart To Add</div>
+                                    <div class="text-[9px] font-black text-slate-400 uppercase tracking-widest">Draw On
+                                        Chart</div>
+                                    <div id="guideLineDrawHint" class="text-[9px] font-bold text-slate-300 uppercase">
+                                        Click Chart To Add</div>
                                 </div>
-                                <button id="guideLineDrawBtn" onclick="toggleGuideLineDrawMode()" class="px-3 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all">Off</button>
+                                <button id="guideLineDrawBtn" onclick="toggleGuideLineDrawMode()"
+                                    class="px-3 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all">Off</button>
                             </div>
                             <div id="guideLineList" class="space-y-2"></div>
                         </div>
                     </div>
                     <div class="pt-4 border-t border-slate-200 space-y-4">
-                        <div class="grid grid-cols-1 sm:grid-cols-2 gap-3 text-[10px] font-black text-slate-400 uppercase tracking-widest">
-                            <div>Start Date<input id="startDate" type="date" class="w-full border-b-2 p-1 font-bold bg-transparent outline-none focus:border-blue-500"></div>
-                            <div>End Date<input id="endDate" type="date" class="w-full border-b-2 p-1 font-bold bg-transparent outline-none focus:border-blue-500"></div>
+                        <div
+                            class="grid grid-cols-1 sm:grid-cols-2 gap-3 text-[10px] font-black text-slate-400 uppercase tracking-widest">
+                            <div>Start Date<input id="startDate" type="date"
+                                    class="w-full border-b-2 p-1 font-bold bg-transparent outline-none focus:border-blue-500">
+                            </div>
+                            <div>End Date<input id="endDate" type="date"
+                                    class="w-full border-b-2 p-1 font-bold bg-transparent outline-none focus:border-blue-500">
+                            </div>
                         </div>
-                        <button onclick="buildTimeline()" class="w-full bg-slate-100 text-slate-400 py-4 rounded-2xl font-black hover:bg-blue-50 hover:text-blue-600 transition-all uppercase text-xs tracking-widest italic">Manual Force Sync</button>
+                        <button onclick="buildTimeline()"
+                            class="w-full bg-slate-100 text-slate-400 py-4 rounded-2xl font-black hover:bg-blue-50 hover:text-blue-600 transition-all uppercase text-xs tracking-widest italic">Manual
+                            Force Sync</button>
                     </div>
                 </div>
             </div>
 
             <!-- Logger -->
             <div class="bg-white p-6 rounded-[2.5rem] shadow-xl border border-slate-200 overflow-hidden">
-                <div class="section-header flex justify-between items-center mb-4" onclick="toggleSection('logger-hub')">
+                <div class="section-header flex justify-between items-center mb-4"
+                    onclick="toggleSection('logger-hub')">
                     <h3 class="text-xs font-black tracking-widest uppercase italic text-slate-400">Insight Logger</h3>
                     <span id="logger-hub-icon" class="text-[10px] text-slate-300">▲</span>
                 </div>
                 <div id="logger-hub" class="space-y-4">
-                    <select id="eventTargetTicker" class="w-full text-[10px] font-black bg-slate-50 p-3 rounded-xl border-none cursor-pointer outline-none"></select>
-                    <div class="flex flex-wrap gap-1 p-1 bg-slate-100 rounded-xl cursor-default" role="radiogroup" aria-label="이벤트 유형 선택">
+                    <select id="eventTargetTicker"
+                        class="w-full text-[10px] font-black bg-slate-50 p-3 rounded-xl border-none cursor-pointer outline-none"></select>
+                    <div class="flex flex-wrap gap-1 p-1 bg-slate-100 rounded-xl cursor-default" role="radiogroup"
+                        aria-label="이벤트 유형 선택">
                         <div class="event-type-option flex-1">
                             <input type="radio" name="eventType" id="typeDefault" value="def" class="sr-only" checked>
-                            <label for="typeDefault" class="block text-center py-2 text-[10px] font-black rounded-lg cursor-pointer text-slate-500 hover:bg-white/80 hover:text-slate-900 transition-all select-none">기본</label>
+                            <label for="typeDefault"
+                                class="block text-center py-2 text-[10px] font-black rounded-lg cursor-pointer text-slate-500 hover:bg-white/80 hover:text-slate-900 transition-all select-none">기본</label>
                         </div>
                         <div class="event-type-option flex-1">
                             <input type="radio" name="eventType" id="typePos" value="pos" class="sr-only">
-                            <label for="typePos" class="block text-center py-2 text-[10px] font-black rounded-lg cursor-pointer text-slate-500 hover:bg-white/80 hover:text-slate-900 transition-all select-none">호재</label>
+                            <label for="typePos"
+                                class="block text-center py-2 text-[10px] font-black rounded-lg cursor-pointer text-slate-500 hover:bg-white/80 hover:text-slate-900 transition-all select-none">호재</label>
                         </div>
                         <div class="event-type-option flex-1">
                             <input type="radio" name="eventType" id="typeNeg" value="neg" class="sr-only">
-                            <label for="typeNeg" class="block text-center py-2 text-[10px] font-black rounded-lg cursor-pointer text-slate-500 hover:bg-white/80 hover:text-slate-900 transition-all select-none">악재</label>
+                            <label for="typeNeg"
+                                class="block text-center py-2 text-[10px] font-black rounded-lg cursor-pointer text-slate-500 hover:bg-white/80 hover:text-slate-900 transition-all select-none">악재</label>
                         </div>
                     </div>
-                    <input id="eventDate" type="date" class="w-full border p-3 rounded-xl text-xs font-bold outline-none">
-                    <input id="eventTitle" type="text" placeholder="사건 제목" class="w-full border p-3 rounded-xl text-xs font-black outline-none">
-                    <textarea id="eventDesc" rows="2" placeholder="분석 기록" class="w-full border p-3 rounded-xl text-xs resize-none font-medium outline-none"></textarea>
-                    <button onclick="addEvent()" class="w-full bg-slate-900 text-white py-3 rounded-xl font-black text-xs hover:bg-black transition-all shadow-md">+ Add Insight</button>
+                    <input id="eventDate" type="date"
+                        class="w-full border p-3 rounded-xl text-xs font-bold outline-none">
+                    <input id="eventTitle" type="text" placeholder="사건 제목"
+                        class="w-full border p-3 rounded-xl text-xs font-black outline-none">
+                    <textarea id="eventDesc" rows="2" placeholder="분석 기록"
+                        class="w-full border p-3 rounded-xl text-xs resize-none font-medium outline-none"></textarea>
+                    <button onclick="addEvent()"
+                        class="w-full bg-slate-900 text-white py-3 rounded-xl font-black text-xs hover:bg-black transition-all shadow-md">+
+                        Add Insight</button>
                 </div>
             </div>
 
             <!-- Volatility Alert Hub -->
             <div class="bg-white p-6 rounded-[2.5rem] shadow-xl border border-slate-200 overflow-hidden">
                 <div class="section-header flex justify-between items-center mb-4" onclick="toggleSection('alert-hub')">
-                    <h3 class="text-xs font-black tracking-widest uppercase italic text-slate-400">Volatility Alert Hub</h3>
+                    <h3 class="text-xs font-black tracking-widest uppercase italic text-slate-400">Volatility Alert Hub
+                    </h3>
                     <span id="alert-hub-icon" class="text-[10px] text-slate-300">▲</span>
                 </div>
                 <div id="alert-hub" class="space-y-4">
                     <div class="flex items-center justify-between bg-blue-50 p-4 rounded-2xl border border-blue-100">
                         <span class="text-[10px] font-black text-blue-800 uppercase italic">Master Alert Filter</span>
                         <label class="relative inline-flex items-center cursor-pointer">
-                            <input type="checkbox" id="showVolAlert" onchange="if(chart) chart.draw()" class="sr-only peer">
-                            <div class="w-9 h-5 bg-slate-200 rounded-full peer peer-checked:bg-blue-600 after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:after:translate-x-full"></div>
+                            <input type="checkbox" id="showVolAlert" onchange="if(chart) chart.draw()"
+                                class="sr-only peer">
+                            <div
+                                class="w-9 h-5 bg-slate-200 rounded-full peer peer-checked:bg-blue-600 after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:after:translate-x-full">
+                            </div>
                         </label>
                     </div>
-                    <div class="grid grid-cols-1 sm:grid-cols-[minmax(0,1fr)_88px_auto] gap-2 items-center bg-slate-50 p-3 rounded-2xl border border-slate-100">
-                        <select id="alertTickerInput" class="w-full text-[10px] font-black bg-white p-3 rounded-xl border border-slate-200 cursor-pointer outline-none"></select>
-                        <input id="alertThresholdInput" type="number" step="0.5" value="-3" class="w-full text-center text-[10px] font-black bg-white border border-slate-200 rounded-xl p-3 outline-none text-red-500">
-                        <button onclick="addAlertConfig()" class="px-4 py-3 rounded-xl bg-slate-900 text-white text-[10px] font-black uppercase tracking-widest hover:bg-black transition-all">Add</button>
+                    <div
+                        class="grid grid-cols-1 sm:grid-cols-[minmax(0,1fr)_88px_auto] gap-2 items-center bg-slate-50 p-3 rounded-2xl border border-slate-100">
+                        <select id="alertTickerInput"
+                            class="w-full text-[10px] font-black bg-white p-3 rounded-xl border border-slate-200 cursor-pointer outline-none"></select>
+                        <input id="alertThresholdInput" type="number" step="0.5" value="-3"
+                            class="w-full text-center text-[10px] font-black bg-white border border-slate-200 rounded-xl p-3 outline-none text-red-500">
+                        <button onclick="addAlertConfig()"
+                            class="px-4 py-3 rounded-xl bg-slate-900 text-white text-[10px] font-black uppercase tracking-widest hover:bg-black transition-all">Add</button>
                     </div>
                     <div id="alertConfigList" class="space-y-2 max-h-[320px] overflow-y-auto custom-scroll pr-1"></div>
                 </div>
             </div>
 
-            <button onclick="saveAsImage()" class="w-full bg-white border-2 border-slate-200 text-slate-400 py-4 rounded-2xl text-[10px] font-black hover:bg-slate-50 uppercase shadow-sm transition-all italic tracking-widest">Export Combined PNG Report</button>
+            <button onclick="saveAsImage()"
+                class="w-full bg-white border-2 border-slate-200 text-slate-400 py-4 rounded-2xl text-[10px] font-black hover:bg-slate-50 uppercase shadow-sm transition-all italic tracking-widest">Export
+                Combined PNG Report</button>
         </div>
 
         <!-- 2. 중앙 캔버스 -->
-        <div id="centerPanel" class="min-w-0 flex-1 flex flex-col items-center bg-white p-4 sm:p-8 rounded-[2rem] sm:rounded-[3.5rem] shadow-inner h-fit border border-slate-200 overflow-auto transition-all">
-            
+        <div id="centerPanel"
+            class="min-w-0 flex-1 flex flex-col items-center bg-white p-4 sm:p-8 rounded-[2rem] sm:rounded-[3.5rem] shadow-inner h-fit border border-slate-200 overflow-auto transition-all">
+
             <div id="universeView" class="hidden w-full max-w-[2400px] space-y-6">
                 <!-- Universe Top Management Hub -->
                 <div class="bg-slate-50 p-8 rounded-[3rem] border border-slate-200 shadow-sm space-y-8">
                     <div class="flex flex-col xl:flex-row justify-between items-start xl:items-center gap-8">
                         <div class="space-y-1">
-                            <h2 id="currentUniverseTitle" class="text-4xl font-black italic tracking-tighter text-slate-900 uppercase">Universe Intelligence</h2>
-                            <div id="currentUniverseTickers" class="text-[10px] font-black text-slate-400 uppercase tracking-[0.3em]">Global Market Heatmap & Multi-Hub Dashboard</div>
+                            <h2 id="currentUniverseTitle"
+                                class="text-4xl font-black italic tracking-tighter text-slate-900 uppercase">Universe
+                                Intelligence</h2>
+                            <div id="currentUniverseTickers"
+                                class="text-[10px] font-black text-slate-400 uppercase tracking-[0.3em]">Global Market
+                                Heatmap & Multi-Hub Dashboard</div>
                         </div>
                         <div class="flex flex-wrap gap-2 items-center" id="universeListContainer">
-                            <button onclick="selectUniverse(null)" id="btnDashboard" class="px-6 py-3 rounded-full border-2 border-slate-900 bg-slate-900 text-white text-[11px] font-black uppercase tracking-widest shadow-lg transition-all">Overview Dashboard</button>
+                            <button onclick="selectUniverse(null)" id="btnDashboard"
+                                class="px-6 py-3 rounded-full border-2 border-slate-900 bg-slate-900 text-white text-[11px] font-black uppercase tracking-widest shadow-lg transition-all">Overview
+                                Dashboard</button>
                             <div id="universeList" class="flex flex-wrap gap-2"></div>
-                            <button onclick="showCreateUniverseModal()" class="px-6 py-3 rounded-full border-2 border-dashed border-slate-300 text-slate-400 hover:border-blue-500 hover:text-blue-500 text-[11px] font-black uppercase tracking-widest transition-all">+ NEW GROUP</button>
+                            <button onclick="showCreateUniverseModal()"
+                                class="px-6 py-3 rounded-full border-2 border-dashed border-slate-300 text-slate-400 hover:border-blue-500 hover:text-blue-500 text-[11px] font-black uppercase tracking-widest transition-all">+
+                                NEW GROUP</button>
                         </div>
                     </div>
 
@@ -387,52 +822,116 @@
                         <div class="univ-control-row">
                             <div class="universe-control-card flex-1 min-w-[300px]">
                                 <span class="text-[9px] font-black text-slate-400 uppercase">Universe</span>
-                                <input id="editUniverseName" type="text" placeholder="Rename Group..." class="flex-1 bg-transparent font-bold text-sm outline-none px-2">
-                                <button onclick="renameActiveUniverse()" class="px-4 py-2 bg-slate-900 text-white rounded-xl font-black text-[9px] hover:bg-black uppercase tracking-widest">Rename</button>
-                            </div>
-                        </div>
-                        
-                        <!-- Row 2: Search & Add -->
-                        <div class="univ-control-row">
-                            <div class="universe-control-card flex-1 relative">
-                                <div class="w-8 h-8 rounded-full bg-slate-100 flex items-center justify-center text-xs">🔍</div>
-                                <input id="universeSearchInput" oninput="renderUniverseUnifiedSearch()" placeholder="Search Name or Ticker to Add to this Group..." class="flex-1 bg-transparent font-bold text-sm outline-none px-2">
-                                <div id="universeSearchResults" class="absolute top-full left-0 right-0 mt-2 z-[110] space-y-2 hidden"></div>
+                                <input id="editUniverseName" type="text" placeholder="Rename Group..."
+                                    class="flex-1 bg-transparent font-bold text-sm outline-none px-2">
+                                <button onclick="renameActiveUniverse()"
+                                    class="px-4 py-2 bg-slate-900 text-white rounded-xl font-black text-[9px] hover:bg-black uppercase tracking-widest">Rename</button>
                             </div>
                         </div>
 
-                        <!-- Row 3: Analysis Intelligence Controller -->
+                        <!-- Row 2: Search & Add -->
+                        <div class="univ-control-row">
+                            <div class="universe-control-card flex-1 relative">
+                                <div class="w-8 h-8 rounded-full bg-slate-100 flex items-center justify-center text-xs">
+                                    🔍</div>
+                                <input id="universeSearchInput" oninput="renderUniverseUnifiedSearch()"
+                                    placeholder="Search Name or Ticker to Add to this Group..."
+                                    class="flex-1 bg-transparent font-bold text-sm outline-none px-2">
+                                <div id="universeSearchResults"
+                                    class="absolute top-full left-0 right-0 mt-2 z-[110] space-y-2 hidden"></div>
+                            </div>
+                        </div>
+
+                        <!-- Row 3: Engine & Analysis -->
                         <div class="univ-control-row">
                             <div class="universe-control-card">
                                 <span class="text-[9px] font-black text-slate-400 uppercase">Engine</span>
                                 <div class="flex bg-slate-100 p-1 rounded-xl">
-                                    <button onclick="setUniverseEngine('chartjs')" id="univEngineIntelBtn" class="px-3 py-1.5 text-[9px] font-black uppercase rounded-lg transition-all bg-white shadow-sm text-blue-600">Master Intel</button>
-                                    <button onclick="setUniverseEngine('tv')" id="univEngineTVBtn" class="px-3 py-1.5 text-[9px] font-black uppercase rounded-lg transition-all text-slate-400 hover:bg-white/50">TradingView</button>
+                                    <button onclick="setUniverseEngine('chartjs')" id="univEngineIntelBtn"
+                                        class="px-3 py-1.5 text-[9px] font-black uppercase rounded-lg">Intel</button>
+                                    <button onclick="setUniverseEngine('tv')" id="univEngineTVBtn"
+                                        class="px-3 py-1.5 text-[9px] font-black uppercase rounded-lg">TV</button>
                                 </div>
                             </div>
                             <div class="universe-control-card">
-                                <span class="text-[9px] font-black text-slate-400 uppercase">View Intelligence</span>
+                                <span class="text-[9px] font-black text-slate-400 uppercase">Style</span>
+                                <div class="flex bg-slate-100 p-1 rounded-xl">
+                                    <button onclick="setChartMode('line'); renderUniverseGrid();" id="univModeLineBtn"
+                                        class="px-3 py-1.5 text-[9px] font-black uppercase rounded-lg">Line</button>
+                                    <button onclick="setChartMode('candle'); renderUniverseGrid();"
+                                        id="univModeCandleBtn"
+                                        class="px-3 py-1.5 text-[9px] font-black uppercase rounded-lg">Candle</button>
+                                </div>
+                            </div>
+                            <div class="universe-control-card">
+                                <span class="text-[9px] font-black text-slate-400 uppercase">MA Periods</span>
+                                <div id="univMaSelection" class="flex gap-1 bg-slate-100 p-1 rounded-xl"></div>
+                            </div>
+                            <div class="universe-control-card">
+                                <span class="text-[9px] font-black text-slate-400 uppercase">Analysis</span>
                                 <div class="flex gap-1 bg-slate-100 p-1 rounded-xl">
-                                    <button onclick="toggleUnivOption('ma')" id="univOptMaBtn" class="px-3 py-1.5 text-[9px] font-black uppercase rounded-lg transition-all text-slate-400 hover:bg-white/50">MA 20/120</button>
-                                    <button onclick="toggleUnivOption('vol')" id="univOptVolBtn" class="px-3 py-1.5 text-[9px] font-black uppercase rounded-lg transition-all text-slate-400 hover:bg-white/50">Volume</button>
-                                    <button onclick="toggleUnivOption('quarter')" id="univOptQuarterBtn" class="px-3 py-1.5 text-[9px] font-black uppercase rounded-lg transition-all text-slate-400 hover:bg-white/50">Quarter Line</button>
+                                    <button onclick="toggleUnivOption('vol')" id="univOptVolBtn"
+                                        class="px-3 py-1.5 text-[9px] font-black uppercase rounded-lg">Volume</button>
                                 </div>
                             </div>
+                        </div>
+
+                        <!-- Row 4: Timeframe & Lookback & Grid & Custom Date (개선됨) -->
+                        <div class="univ-control-row">
+                            <!-- 그리드 배열 선택 -->
                             <div class="universe-control-card">
-                                <span class="text-[9px] font-black text-slate-400 uppercase">Grid</span>
-                                <select id="gridSizeSelect" onchange="renderUniverseGrid()" class="bg-transparent text-[10px] font-black uppercase outline-none cursor-pointer px-2">
-                                    <option value="auto">Auto Layout</option>
-                                    <option value="1">1x1 Focus</option>
-                                    <option value="2">2x2 Compare</option>
-                                    <option value="3">3x3 Matrix</option>
-                                    <option value="4">4x4 Overview</option>
+                                <span class="text-[9px] font-black text-slate-400 uppercase">Grid Layout</span>
+                                <select id="univGridSelect" onchange="renderUniverseGrid()"
+                                    class="bg-slate-100 text-[10px] font-black p-1 rounded-lg outline-none cursor-pointer">
+                                    <option value="auto">Auto</option>
+                                    <option value="1">1 * 1</option>
+                                    <option value="2">2 * 2</option>
+                                    <option value="3">3 * 3</option>
+                                    <option value="4">4 * 4</option>
+                                    <option value="5">5 * 5</option>
                                 </select>
                             </div>
+
+                            <!-- 타임프레임 -->
                             <div class="universe-control-card">
-                                <label class="flex items-center gap-2 cursor-pointer">
-                                    <input type="checkbox" id="universeOverlayComparison" onchange="renderUniverseGrid()" class="w-3 h-3 rounded-md border-slate-300">
-                                    <span class="text-[9px] font-black text-slate-400 uppercase">Overlay Compare List</span>
-                                </label>
+                                <span class="text-[9px] font-black text-slate-400 uppercase">T.F</span>
+                                <div class="flex bg-slate-100 p-1 rounded-xl">
+                                    <button onclick="setChartTimeframe('day'); renderUniverseGrid();" id="univTfDayBtn"
+                                        class="px-2 py-1 text-[9px] font-black uppercase rounded-lg">D</button>
+                                    <button onclick="setChartTimeframe('week'); renderUniverseGrid();"
+                                        id="univTfWeekBtn"
+                                        class="px-2 py-1 text-[9px] font-black uppercase rounded-lg">W</button>
+                                    <button onclick="setChartTimeframe('month'); renderUniverseGrid();"
+                                        id="univTfMonthBtn"
+                                        class="px-2 py-1 text-[9px] font-black uppercase rounded-lg">M</button>
+                                </div>
+                            </div>
+
+                            <!-- 직접 날짜 선택기 -->
+                            <div class="universe-control-card">
+                                <span class="text-[9px] font-black text-slate-400 uppercase">Range</span>
+                                <div class="flex items-center gap-1">
+                                    <input type="date" id="univStart" onchange="syncUnivDatesToMain()"
+                                        class="bg-slate-50 text-[9px] font-bold p-1 rounded border border-slate-200">
+                                    <span class="text-slate-300">~</span>
+                                    <input type="date" id="univEnd" onchange="syncUnivDatesToMain()"
+                                        class="bg-slate-50 text-[9px] font-bold p-1 rounded border border-slate-200">
+                                    <button onclick="renderUniverseGrid()"
+                                        class="ml-1 px-2 py-1 bg-blue-600 text-white text-[9px] font-black rounded uppercase">Go</button>
+                                </div>
+                            </div>
+
+                            <!-- 빠른 기간 설정 -->
+                            <div class="universe-control-card">
+                                <span class="text-[9px] font-black text-slate-400 uppercase">Quick</span>
+                                <div class="flex bg-slate-100 p-1 rounded-xl gap-0.5">
+                                    <button onclick="setUniverseLookback(90)"
+                                        class="px-2 py-1 text-[9px] font-black uppercase rounded-lg hover:bg-white">3M</button>
+                                    <button onclick="setUniverseLookback(180)"
+                                        class="px-2 py-1 text-[9px] font-black uppercase rounded-lg hover:bg-white">6M</button>
+                                    <button onclick="setUniverseLookback(365)"
+                                        class="px-2 py-1 text-[9px] font-black uppercase rounded-lg hover:bg-white">1Y</button>
+                                </div>
                             </div>
                         </div>
                     </div>
@@ -450,30 +949,44 @@
                     <div class="flex flex-col sm:flex-row justify-between items-start sm:items-end gap-6">
                         <div>
                             <div class="flex items-center gap-4 mb-4">
-                                <div class="inline-block px-3 py-1 bg-slate-900 text-white text-[10px] font-black rounded-sm uppercase italic tracking-tighter">Master Intelligence & Multi-Hub Report</div>
+                                <div
+                                    class="inline-block px-3 py-1 bg-slate-900 text-white text-[10px] font-black rounded-sm uppercase italic tracking-tighter">
+                                    Master Intelligence & Multi-Hub Report</div>
                                 <div class="engine-switch-container">
-                                    <button id="reportEngineIntelBtn" onclick="setReportEngine('intel')" class="engine-switch-btn active">Intel</button>
-                                    <button id="reportEngineTVBtn" onclick="setReportEngine('tv')" class="engine-switch-btn inactive">Live TV</button>
+                                    <button id="reportEngineIntelBtn" onclick="setReportEngine('intel')"
+                                        class="engine-switch-btn active">Intel</button>
+                                    <button id="reportEngineTVBtn" onclick="setReportEngine('tv')"
+                                        class="engine-switch-btn inactive">Live TV</button>
                                 </div>
                             </div>
-                            <h1 class="text-4xl sm:text-6xl font-black text-slate-900 italic uppercase leading-none tracking-tighter">FINANCIAL LOG</h1>
+                            <h1
+                                class="text-4xl sm:text-6xl font-black text-slate-900 italic uppercase leading-none tracking-tighter">
+                                FINANCIAL LOG</h1>
                             <div id="outSub" class="flex flex-wrap gap-4 mt-6"></div>
                         </div>
-                        <div class="text-right font-mono"><span id="outPeriod" class="text-base text-slate-400 font-black uppercase tracking-widest">----.--.--</span></div>
+                        <div class="text-right font-mono"><span id="outPeriod"
+                                class="text-base text-slate-400 font-black uppercase tracking-widest">----.--.--</span>
+                        </div>
                     </div>
                 </div>
-                <div id="chartContainer" class="relative h-[550px] mb-20 scroll-mt-20"><canvas id="mainChart"></canvas></div>
+                <div id="chartContainer" class="relative h-[550px] mb-20 scroll-mt-20"><canvas id="mainChart"></canvas>
+                </div>
                 <div id="quarterSection" class="hidden mb-20 space-y-8">
-                    <div class="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 border-b-[6px] border-slate-900 pb-4">
+                    <div
+                        class="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 border-b-[6px] border-slate-900 pb-4">
                         <div>
-                            <div class="text-[10px] font-black uppercase tracking-[0.3em] text-slate-400 italic">Quarter Symmetry Module</div>
-                            <div class="text-3xl font-black italic tracking-tighter text-slate-900 uppercase">4등분 매매법</div>
+                            <div class="text-[10px] font-black uppercase tracking-[0.3em] text-slate-400 italic">Quarter
+                                Symmetry Module</div>
+                            <div class="text-3xl font-black italic tracking-tighter text-slate-900 uppercase">4등분 매매법
+                            </div>
                         </div>
-                        <div id="quarterPeriod" class="text-sm font-black text-slate-400 uppercase tracking-widest">--</div>
+                        <div id="quarterPeriod" class="text-sm font-black text-slate-400 uppercase tracking-widest">--
+                        </div>
                     </div>
                     <div class="grid grid-cols-1 lg:grid-cols-[1.2fr_1fr] gap-8">
                         <div id="quarterMatrixCard" class="quarter-card p-4 sm:p-6 overflow-x-auto">
-                            <div class="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-4">Price Matrix</div>
+                            <div class="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-4">Price
+                                Matrix</div>
                             <table class="quarter-matrix" id="quarterMatrixTable">
                                 <thead>
                                     <tr>
@@ -495,7 +1008,8 @@
                         </div>
                     </div>
                     <div id="quarterCountdownCard" class="quarter-card p-6">
-                        <div class="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-4">Pure Time Symmetry Countdown</div>
+                        <div class="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-4">Pure Time
+                            Symmetry Countdown</div>
                         <div id="quarterCountdown" class="space-y-3"></div>
                     </div>
                 </div>
@@ -503,15 +1017,18 @@
                 <div id="reportLiveTVSection" class="hidden mb-20 space-y-8">
                     <div class="flex items-center justify-between border-b-[6px] border-slate-900 pb-4">
                         <div>
-                            <div class="text-[10px] font-black uppercase tracking-[0.3em] text-slate-400 italic">Live Market Intelligence</div>
-                            <div class="text-3xl font-black italic tracking-tighter text-slate-900 uppercase">Live Universe Grid</div>
+                            <div class="text-[10px] font-black uppercase tracking-[0.3em] text-slate-400 italic">Live
+                                Market Intelligence</div>
+                            <div class="text-3xl font-black italic tracking-tighter text-slate-900 uppercase">Live
+                                Universe Grid</div>
                         </div>
                     </div>
                     <div id="reportLiveTVGrid" class="grid gap-4 w-full"></div>
                 </div>
 
                 <div id="eventGrid" class="grid grid-cols-1 lg:grid-cols-2 gap-5 sm:gap-8"></div>
-                <div class="report-footer absolute bottom-10 left-[60px] right-[60px] flex justify-between items-center text-[10px] text-slate-300 font-bold tracking-[0.4em] border-t pt-8 uppercase">
+                <div
+                    class="report-footer absolute bottom-10 left-[60px] right-[60px] flex justify-between items-center text-[10px] text-slate-300 font-bold tracking-[0.4em] border-t pt-8 uppercase">
                     <span>Research Desk OS Core Framework V39</span>
                     <span id="timeStamp">System Ready</span>
                 </div>
@@ -521,57 +1038,90 @@
         <!-- 3. 우측 데이터베이스 -->
         <div id="rightPanel" class="w-full xl:w-[400px] space-y-6 xl:sticky xl:top-6 h-fit font-bold transition-all">
             <div class="bg-white p-6 rounded-[2.5rem] shadow-xl border border-slate-200 overflow-hidden">
-                <div class="section-header flex justify-between items-center mb-4" onclick="toggleSection('quarter-hub')">
-                    <h3 class="text-xs font-black tracking-widest uppercase italic text-slate-400">Quarter Symmetry Hub</h3>
+                <div class="section-header flex justify-between items-center mb-4"
+                    onclick="toggleSection('quarter-hub')">
+                    <h3 class="text-xs font-black tracking-widest uppercase italic text-slate-400">Quarter Symmetry Hub
+                    </h3>
                     <span id="quarter-hub-icon" class="text-[10px] text-slate-300">▼</span>
                 </div>
                 <div id="quarter-hub" class="hidden space-y-4">
-                    <div class="flex items-center justify-between gap-3 bg-slate-50 rounded-[1.5rem] p-4 border border-slate-100">
+                    <div
+                        class="flex items-center justify-between gap-3 bg-slate-50 rounded-[1.5rem] p-4 border border-slate-100">
                         <div>
-                            <div class="text-[10px] font-black text-slate-500 uppercase tracking-widest">Optional Overlay</div>
-                            <div id="quarterModeHint" class="text-[9px] font-bold text-slate-300 uppercase">Single Asset Only</div>
+                            <div class="text-[10px] font-black text-slate-500 uppercase tracking-widest">Optional
+                                Overlay</div>
+                            <div id="quarterModeHint" class="text-[9px] font-bold text-slate-300 uppercase">Single Asset
+                                Only</div>
                         </div>
                         <div class="event-type-option">
-                            <input type="checkbox" id="quarterEnabled" class="quarter-toggle sr-only" onchange="toggleQuarterSymmetry(this.checked)">
-                            <label for="quarterEnabled" class="block px-4 py-2 rounded-xl border border-slate-200 text-[10px] font-black uppercase tracking-widest text-slate-500 cursor-pointer transition-all">Enable</label>
+                            <input type="checkbox" id="quarterEnabled" class="quarter-toggle sr-only"
+                                onchange="toggleQuarterSymmetry(this.checked)">
+                            <label for="quarterEnabled"
+                                class="block px-4 py-2 rounded-xl border border-slate-200 text-[10px] font-black uppercase tracking-widest text-slate-500 cursor-pointer transition-all">Enable</label>
                         </div>
                     </div>
-                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-3 text-[10px] font-black text-slate-400 uppercase tracking-widest">
-                        <div>Wave Start<input id="quarterWaveStart" type="date" class="w-full border-b-2 p-1 font-bold bg-transparent outline-none focus:border-blue-500"></div>
-                        <div>Wave End<input id="quarterWaveEnd" type="date" class="w-full border-b-2 p-1 font-bold bg-transparent outline-none focus:border-blue-500"></div>
+                    <div
+                        class="grid grid-cols-1 sm:grid-cols-2 gap-3 text-[10px] font-black text-slate-400 uppercase tracking-widest">
+                        <div>Wave Start<input id="quarterWaveStart" type="date"
+                                class="w-full border-b-2 p-1 font-bold bg-transparent outline-none focus:border-blue-500">
+                        </div>
+                        <div>Wave End<input id="quarterWaveEnd" type="date"
+                                class="w-full border-b-2 p-1 font-bold bg-transparent outline-none focus:border-blue-500">
+                        </div>
                     </div>
                     <div class="bg-slate-50 p-4 rounded-[1.5rem] border border-slate-100 space-y-3">
-                        <div class="text-[10px] font-black text-slate-500 uppercase tracking-widest">Display Config</div>
-                        <label class="flex items-center gap-2 text-[10px] font-bold text-slate-600"><input type="checkbox" id="quarterShowSub" checked onchange="setQuarterOption('showSub', this.checked)"><span>16-Matrix 미세선 & 가격</span></label>
-                        <label class="flex items-center gap-2 text-[10px] font-bold text-slate-600"><input type="checkbox" id="quarterShowTime" checked onchange="setQuarterOption('showTime', this.checked)"><span>시간 대칭(Time Symmetry)</span></label>
-                        <label class="flex items-center gap-2 text-[10px] font-bold text-slate-600"><input type="checkbox" id="quarterShowVector" checked onchange="setQuarterOption('showVector', this.checked)"><span>현재가(LTP) & 벡터 라인</span></label>
+                        <div class="text-[10px] font-black text-slate-500 uppercase tracking-widest">Display Config
+                        </div>
+                        <label class="flex items-center gap-2 text-[10px] font-bold text-slate-600"><input
+                                type="checkbox" id="quarterShowSub" checked
+                                onchange="setQuarterOption('showSub', this.checked)"><span>16-Matrix 미세선 &
+                                가격</span></label>
+                        <label class="flex items-center gap-2 text-[10px] font-bold text-slate-600"><input
+                                type="checkbox" id="quarterShowTime" checked
+                                onchange="setQuarterOption('showTime', this.checked)"><span>시간 대칭(Time
+                                Symmetry)</span></label>
+                        <label class="flex items-center gap-2 text-[10px] font-bold text-slate-600"><input
+                                type="checkbox" id="quarterShowVector" checked
+                                onchange="setQuarterOption('showVector', this.checked)"><span>현재가(LTP) & 벡터
+                                라인</span></label>
                     </div>
                     <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                        <button onclick="syncQuarterRangeWithData()" class="w-full text-[10px] font-black text-blue-600 bg-white border py-3 rounded-xl uppercase tracking-widest">Auto Range</button>
-                        <button onclick="runQuarterSymmetry()" class="w-full text-[10px] font-black text-white bg-slate-900 py-3 rounded-xl uppercase tracking-widest">Run Module</button>
+                        <button onclick="syncQuarterRangeWithData()"
+                            class="w-full text-[10px] font-black text-blue-600 bg-white border py-3 rounded-xl uppercase tracking-widest">Auto
+                            Range</button>
+                        <button onclick="runQuarterSymmetry()"
+                            class="w-full text-[10px] font-black text-white bg-slate-900 py-3 rounded-xl uppercase tracking-widest">Run
+                            Module</button>
                     </div>
                 </div>
             </div>
 
             <div class="bg-white p-6 rounded-[2.5rem] shadow-xl border border-slate-200">
-                <div class="section-header flex justify-between items-center mb-4" onclick="toggleSection('db-section')">
+                <div class="section-header flex justify-between items-center mb-4"
+                    onclick="toggleSection('db-section')">
                     <h3 class="text-xs font-black tracking-widest uppercase italic text-slate-400">Asset Database</h3>
                     <span id="db-section-icon" class="text-[10px] text-slate-200">▲</span>
                 </div>
                 <div id="db-section">
-                    <div id="historyList" class="space-y-2 max-h-[340px] overflow-y-auto custom-scroll pr-1 text-xs"></div>
+                    <div id="historyList" class="space-y-2 max-h-[340px] overflow-y-auto custom-scroll pr-1 text-xs">
+                    </div>
                 </div>
             </div>
 
             <div class="bg-slate-900 p-6 rounded-[2.5rem] shadow-xl text-white">
-                <div class="section-header flex justify-between items-center mb-4" onclick="toggleSection('feed-section')">
-                    <h3 class="text-xs font-black tracking-widest uppercase text-slate-400 font-mono text-center">Global Event Feed</h3>
+                <div class="section-header flex justify-between items-center mb-4"
+                    onclick="toggleSection('feed-section')">
+                    <h3 class="text-xs font-black tracking-widest uppercase text-slate-400 font-mono text-center">Global
+                        Event Feed</h3>
                     <span id="feed-section-icon" class="text-[10px] text-slate-600">▲</span>
                 </div>
                 <div id="feed-section">
-                    <input id="feedSearch" oninput="renderUnifiedSearch(); renderGlobalEvents(); renderHistoryList()" placeholder="Integrated Search: ticker / asset / event / benchmark memo" class="w-full bg-slate-800 border-none p-3 rounded-xl text-[10px] font-medium outline-none focus:ring-1 ring-blue-500 mb-4">
+                    <input id="feedSearch" oninput="renderUnifiedSearch(); renderGlobalEvents(); renderHistoryList()"
+                        placeholder="Integrated Search: ticker / asset / event / benchmark memo"
+                        class="w-full bg-slate-800 border-none p-3 rounded-xl text-[10px] font-medium outline-none focus:ring-1 ring-blue-500 mb-4">
                     <div id="searchResultList" class="space-y-2 mb-4"></div>
-                    <div id="globalEventList" class="space-y-3 max-h-[340px] overflow-y-auto custom-scroll pr-1 text-[11px]"></div>
+                    <div id="globalEventList"
+                        class="space-y-3 max-h-[340px] overflow-y-auto custom-scroll pr-1 text-[11px]"></div>
                 </div>
             </div>
 
@@ -582,21 +1132,29 @@
                         <h2 class="text-2xl font-black italic tracking-tighter uppercase leading-none">OS V39</h2>
                     </div>
                     <div class="flex gap-1 flex-wrap justify-start sm:justify-end">
-                        <button onclick="triggerUndoRecovery()" class="px-3 py-1.5 bg-white/15 text-white rounded-lg text-[10px] font-black uppercase hover:bg-white/20">Undo</button>
-                        <button onclick="triggerRestoreRecovery()" class="px-3 py-1.5 bg-white/15 text-white rounded-lg text-[10px] font-black uppercase hover:bg-white/20">Restore</button>
-                        <button onclick="exportBackup()" class="px-3 py-1.5 bg-slate-800 text-white rounded-lg text-[10px] font-black uppercase">Backup</button>
-                        <button onclick="resetWorkspace()" class="px-3 py-1.5 bg-red-500 text-white rounded-lg text-[10px] font-black uppercase hover:bg-red-600">Reset</button>
+                        <button onclick="triggerUndoRecovery()"
+                            class="px-3 py-1.5 bg-white/15 text-white rounded-lg text-[10px] font-black uppercase hover:bg-white/20">Undo</button>
+                        <button onclick="triggerRestoreRecovery()"
+                            class="px-3 py-1.5 bg-white/15 text-white rounded-lg text-[10px] font-black uppercase hover:bg-white/20">Restore</button>
+                        <button onclick="exportBackup()"
+                            class="px-3 py-1.5 bg-slate-800 text-white rounded-lg text-[10px] font-black uppercase">Backup</button>
+                        <button onclick="resetWorkspace()"
+                            class="px-3 py-1.5 bg-red-500 text-white rounded-lg text-[10px] font-black uppercase hover:bg-red-600">Reset</button>
                     </div>
                 </div>
-                <label class="block w-full text-center px-4 py-2 bg-white/15 text-white rounded-xl text-[10px] font-black cursor-pointer hover:bg-white/20 uppercase italic mb-5">
+                <label
+                    class="block w-full text-center px-4 py-2 bg-white/15 text-white rounded-xl text-[10px] font-black cursor-pointer hover:bg-white/20 uppercase italic mb-5">
                     Import DB <input type="file" class="hidden" onchange="importBackup(event)">
                 </label>
-                <div class="section-header flex justify-between items-center mb-4" onclick="toggleSection('set-section')">
+                <div class="section-header flex justify-between items-center mb-4"
+                    onclick="toggleSection('set-section')">
                     <h3 class="text-xs font-black tracking-widest uppercase italic">Snapshots</h3>
                     <span id="set-section-icon" class="text-[10px] opacity-50">▲</span>
                 </div>
                 <div id="set-section" class="space-y-2 max-h-[250px] overflow-y-auto custom-scroll pr-1"></div>
-                <button onclick="saveCombinedSet()" class="w-full mt-3 bg-white/20 text-white py-2 rounded-xl font-black text-[10px] hover:bg-white/30 uppercase tracking-widest italic transition-all">💾 Snapshot Current Hub</button>
+                <button onclick="saveCombinedSet()"
+                    class="w-full mt-3 bg-white/20 text-white py-2 rounded-xl font-black text-[10px] hover:bg-white/30 uppercase tracking-widest italic transition-all">💾
+                    Snapshot Current Hub</button>
             </div>
 
         </div>
@@ -607,7 +1165,7 @@
         const COLORS = ['#2563eb', '#10b981', '#f59e0b', '#7c3aed', '#db2777', '#dc2626', '#14b8a6', '#f43f5e'];
         const TYPE_COLORS = { def: '#94a3b8', pos: '#10b981', neg: '#ef4444' };
         const TYPE_LABELS = { def: '기본', pos: '호재', neg: '악재' };
-        
+
         let chart, compareTickers = [], alertTickers = {}, globalStockData = {}, activeHighlight = null, hoverPoint = null, chartMode = 'line', chartTimeframe = 'day', guideLines = [], showVolume = false, guideLineDrawMode = false, guideLineDraft = null, editingEventId = null;
         const movingAveragePeriods = [5, 20, 60, 120, 224, 448];
         let movingAverageConfig = { 5: false, 20: false, 60: false, 120: false, 224: false, 448: false };
@@ -620,9 +1178,9 @@
         let activeUniverseId = null;
 
         const DEFAULT_BENCHMARKS = [
-            {t:'^KS11', n:'KOSPI'}, {t:'^GSPC', n:'S&P500'}, {t:'^IXIC', n:'NASDAQ'}, {t:'^KQ11', n:'KOSDAQ'},
-            {t:'DX-Y.NYB', n:'DXY'}, {t:'KRW=X', n:'USD/KRW'}, {t:'^TNX', n:'US10Y'}, {t:'KTB3Y.KS', n:'KR3Y'},
-            {t:'GC=F', n:'GOLD'}, {t:'SI=F', n:'SILVER'}, {t:'BTC-USD', n:'BTC'}, {t:'ETH-USD', n:'ETH'}
+            { t: '^KS11', n: 'KOSPI' }, { t: '^GSPC', n: 'S&P500' }, { t: '^IXIC', n: 'NASDAQ' }, { t: '^KQ11', n: 'KOSDAQ' },
+            { t: 'DX-Y.NYB', n: 'DXY' }, { t: 'KRW=X', n: 'USD/KRW' }, { t: '^TNX', n: 'US10Y' }, { t: 'KTB3Y.KS', n: 'KR3Y' },
+            { t: 'GC=F', n: 'GOLD' }, { t: 'SI=F', n: 'SILVER' }, { t: 'BTC-USD', n: 'BTC' }, { t: 'ETH-USD', n: 'ETH' }
         ];
         let benchmarkList = (JSON.parse(localStorage.getItem('rd_v39_bench')) || DEFAULT_BENCHMARKS).map(item => ({ ...item, m: item.m || '' }));
         let flagHitAreas = [];
@@ -712,45 +1270,34 @@
             });
         }
 
+        // --- [수정] 유니버스 선택 시 즉시 실행 로직 ---
         function selectUniverse(id) {
             activeUniverseId = id;
             const dashboard = document.getElementById('universeDashboard');
             const grid = document.getElementById('universeGrid');
             const controls = document.getElementById('universeControls');
             const dashBtn = document.getElementById('btnDashboard');
-            const univIndicator = document.getElementById('activeUniverseNameIndicator');
 
             if (id === null) {
-                // Dashboard Mode
                 dashboard.classList.remove('hidden');
                 grid.classList.add('hidden');
                 controls.classList.add('hidden');
-                dashBtn.className = "px-6 py-3 rounded-full border-2 border-slate-900 bg-slate-900 text-white text-[11px] font-black uppercase tracking-widest shadow-lg transition-all";
-                document.getElementById('currentUniverseTitle').innerText = 'Universe Intelligence';
-                document.getElementById('currentUniverseTickers').innerText = 'Global Market Heatmap & Multi-Hub Dashboard';
-                if (univIndicator) univIndicator.innerText = 'No Universe Active';
+                dashBtn.className = "px-6 py-3 rounded-full border-2 border-slate-900 bg-slate-900 text-white text-[11px] font-black uppercase tracking-widest shadow-lg";
                 renderUniverseDashboard();
             } else {
-                // Active Universe Mode
                 const univ = universes.find(u => u.id === id);
                 if (!univ) return selectUniverse(null);
-                
+
                 dashboard.classList.add('hidden');
                 grid.classList.remove('hidden');
                 controls.classList.remove('hidden');
-                dashBtn.className = "px-6 py-3 rounded-full border-2 border-slate-200 bg-white text-slate-400 text-[11px] font-black uppercase tracking-widest hover:border-slate-900 hover:text-slate-900 transition-all";
-                
+                dashBtn.className = "px-6 py-3 rounded-full border-2 border-slate-200 bg-white text-slate-400 text-[11px] font-black uppercase tracking-widest hover:border-slate-900 hover:text-slate-900";
+
                 document.getElementById('currentUniverseTitle').innerText = univ.name;
-                document.getElementById('currentUniverseTickers').innerText = univ.tickers.length > 0 ? univ.tickers.join(' · ') : 'No symbols added yet';
-                document.getElementById('gridSizeSelect').value = univ.gridSize;
-                document.getElementById('editUniverseName').placeholder = `Rename: ${univ.name}`;
-                if (univIndicator) univIndicator.innerText = `To: ${univ.name}`;
-                
-                if (document.getElementById('universeView').classList.contains('hidden')) {
-                    switchView('universe');
-                } else {
-                    renderUniverseGrid();
-                }
+                document.getElementById('currentUniverseTickers').innerText = univ.tickers.join(' · ');
+
+                // 즉시 렌더링 트리거
+                renderUniverseGrid();
             }
             renderUniverseList();
         }
@@ -759,7 +1306,7 @@
             const input = document.getElementById('tickerName');
             const results = document.getElementById('comparisonSearchResults');
             const query = input.value.trim();
-            
+
             if (!query) {
                 results.innerHTML = '';
                 results.classList.add('hidden');
@@ -769,7 +1316,7 @@
             try {
                 const res = await fetch(`${CF_WORKER_BASE}/search?q=${encodeURIComponent(query)}`);
                 const data = await res.json();
-                
+
                 if (data?.quotes) {
                     results.innerHTML = '';
                     results.classList.remove('hidden');
@@ -780,7 +1327,7 @@
                         div.onclick = () => selectTickerForComparison(q.symbol, name);
                         div.innerHTML = `
                             <div class="flex items-center gap-3">
-                                <div class="w-8 h-8 rounded-lg bg-slate-50 flex items-center justify-center text-[10px] font-black text-slate-400 group-hover:bg-blue-50 group-hover:text-blue-600 transition-all">${q.symbol.slice(0,2)}</div>
+                                <div class="w-8 h-8 rounded-lg bg-slate-50 flex items-center justify-center text-[10px] font-black text-slate-400 group-hover:bg-blue-50 group-hover:text-blue-600 transition-all">${q.symbol.slice(0, 2)}</div>
                                 <div>
                                     <div class="text-xs font-black text-slate-900">${q.symbol} | ${name}</div>
                                     <div class="text-[10px] font-bold text-slate-400">${q.exchange || ''}</div>
@@ -791,7 +1338,7 @@
                         results.appendChild(div);
                     });
                 }
-            } catch (e) {}
+            } catch (e) { }
         }
 
         function selectTickerForComparison(symbol, name) {
@@ -804,7 +1351,7 @@
         async function renderUniverseDashboard() {
             const dashboard = document.getElementById('universeDashboard');
             dashboard.innerHTML = '';
-            
+
             if (universes.length === 0) {
                 dashboard.innerHTML = `
                     <div class="col-span-full py-40 text-center bg-white rounded-[3rem] border-2 border-dashed border-slate-200">
@@ -852,8 +1399,8 @@
                                     change = ((last.close - prev.close) / prev.close) * 100;
                                 }
                             }
-                            return { 
-                                ticker: t, 
+                            return {
+                                ticker: t,
                                 name: qName || allTickerData[t]?.company || t,
                                 change: change,
                                 price: price
@@ -864,7 +1411,8 @@
                             avgChange = validQuotes.reduce((sum, q) => sum + q.change, 0) / validQuotes.length;
                             gainers = validQuotes.filter(q => q.change > 0).length;
                             losers = validQuotes.filter(q => q.change < 0).length;
-                        }                    } catch (e) { console.warn("Dashboard quote load failed", e); }
+                        }
+                    } catch (e) { console.warn("Dashboard quote load failed", e); }
                 }
 
                 const momentumColor = avgChange >= 0 ? 'text-emerald-500' : 'text-red-500';
@@ -892,22 +1440,22 @@
 
                     <div class="grid grid-cols-5 gap-1.5 h-20 mb-8 overflow-y-auto custom-scroll pr-1">
                         ${quotes.map(q => {
-                            let bgColor = 'bg-slate-200';
-                            let pulseClass = '';
-                            if (q.change > 3) bgColor = 'bg-emerald-500';
-                            else if (q.change > 0) bgColor = 'bg-emerald-300';
-                            else if (q.change < -3) bgColor = 'bg-red-500';
-                            else if (q.change < 0) bgColor = 'bg-red-300';
+                    let bgColor = 'bg-slate-200';
+                    let pulseClass = '';
+                    if (q.change > 3) bgColor = 'bg-emerald-500';
+                    else if (q.change > 0) bgColor = 'bg-emerald-300';
+                    else if (q.change < -3) bgColor = 'bg-red-500';
+                    else if (q.change < 0) bgColor = 'bg-red-300';
 
-                            if (Math.abs(q.change) >= 5) pulseClass = 'outlier-pulse';
+                    if (Math.abs(q.change) >= 5) pulseClass = 'outlier-pulse';
 
-                            return `<div 
+                    return `<div 
                                 onclick="event.stopPropagation(); selectTickerForComparison('${q.ticker}', '${q.name.replace(/'/g, "\\'")}'); switchView('report');"
                                 title="${q.name} (${q.ticker}): ${q.change >= 0 ? '+' : ''}${q.change.toFixed(2)}%"
                                 class="rounded-lg ${bgColor} ${pulseClass} opacity-80 hover:opacity-100 hover:scale-110 transition-all cursor-crosshair h-6 relative group/sq">
                                 <div class="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 bg-slate-900 text-white text-[8px] px-2 py-1 rounded opacity-0 group-hover/sq:opacity-100 pointer-events-none whitespace-nowrap z-50">${q.ticker} | ${q.name}</div>
                             </div>`;
-                        }).join('')}
+                }).join('')}
                         ${tickerCount === 0 ? '<div class="col-span-full border border-dashed border-slate-200 rounded-2xl h-full flex items-center justify-center text-[8px] font-black text-slate-300 uppercase italic">Empty</div>' : ''}
                     </div>
                     
@@ -923,17 +1471,11 @@
             const input = document.getElementById('universeSearchInput');
             const results = document.getElementById('universeSearchResults');
             const query = input.value.trim();
-            
-            if (!query) {
-                results.innerHTML = '';
-                results.classList.add('hidden');
-                return;
-            }
+            if (!query) { results.innerHTML = ''; results.classList.add('hidden'); return; }
 
             try {
                 const res = await fetch(`${CF_WORKER_BASE}/search?q=${encodeURIComponent(query)}`);
                 const data = await res.json();
-                
                 if (data?.quotes) {
                     results.innerHTML = '';
                     results.classList.remove('hidden');
@@ -941,29 +1483,40 @@
                         const name = q.shortname || q.longname || q.symbol;
                         const div = document.createElement('div');
                         div.className = "bg-white p-4 rounded-2xl border-2 border-slate-100 hover:border-blue-500 cursor-pointer shadow-lg flex justify-between items-center transition-all group";
-                        div.onclick = () => addTickerToUniverse(q.symbol);
+                        // 여기서 name을 매개변수로 전달
+                        div.onclick = () => addTickerToUniverse(q.symbol, name);
                         div.innerHTML = `
-                            <div class="flex items-center gap-3">
-                                <div class="w-8 h-8 rounded-lg bg-slate-50 flex items-center justify-center text-[10px] font-black text-slate-400 group-hover:bg-blue-50 group-hover:text-blue-600 transition-all">${q.symbol.slice(0,2)}</div>
-                                <div>
-                                    <div class="text-xs font-black text-slate-900">${q.symbol} | ${name}</div>
-                                    <div class="text-[10px] font-bold text-slate-400">${q.exchange || ''}</div>
-                                </div>
-                            </div>
-                            <span class="text-[10px] font-black text-emerald-600 uppercase tracking-widest opacity-0 group-hover:opacity-100 transition-all">+ Add</span>
-                        `;
+                    <div class="flex items-center gap-3">
+                        <div class="w-8 h-8 rounded-lg bg-slate-50 flex items-center justify-center text-[10px] font-black text-slate-400 group-hover:bg-blue-50 group-hover:text-blue-600 transition-all">${q.symbol.slice(0, 2)}</div>
+                        <div>
+                            <div class="text-xs font-black text-slate-900">${q.symbol} | ${name}</div>
+                            <div class="text-[10px] font-bold text-slate-400">${q.exchange || ''}</div>
+                        </div>
+                    </div>
+                    <span class="text-[10px] font-black text-emerald-600 uppercase tracking-widest opacity-0 group-hover:opacity-100 transition-all">+ Add</span>
+                `;
                         results.appendChild(div);
                     });
                 }
-            } catch (e) {}
+            } catch (e) { }
         }
-
-        function addTickerToUniverse(ticker) {
+        function addTickerToUniverse(ticker, name) {
             if (!activeUniverseId) return alert('Select a universe first');
             const univ = universes.find(u => u.id === activeUniverseId);
-            if (univ && !univ.tickers.includes(ticker.toUpperCase())) {
-                univ.tickers.push(ticker.toUpperCase());
+            ticker = ticker.toUpperCase();
+
+            if (univ && !univ.tickers.includes(ticker)) {
+                univ.tickers.push(ticker);
+
+                // 검색 결과에서 받은 이름을 전역 DB에 즉시 저장 (국내 종목명 해결 핵심)
+                if (name) {
+                    if (!allTickerData[ticker]) allTickerData[ticker] = { events: [] };
+                    allTickerData[ticker].company = name;
+                    allTickerData[ticker].lastUpdate = new Date().toISOString();
+                }
+
                 saveDataUniverses();
+                saveData(); // allTickerData 저장
                 selectUniverse(activeUniverseId);
             }
             document.getElementById('universeSearchInput').value = '';
@@ -1001,39 +1554,87 @@
         }
 
         // --- Grid Intelligence Logic ---
-        let univOptions = { ma: false, vol: false, quarter: false, engine: 'chartjs' };
+        let univOptions = {
+            ma: true,
+            vol: true,
+            engine: 'chartjs',
+            activeMas: [20, 60, 120] // 유니버스에서 기본 활성화할 MA
+        };
+
+
+        // --- [기능] 유니버스 날짜 동기화 ---
+        function syncUnivDatesToMain() {
+            document.getElementById('startDate').value = document.getElementById('univStart').value;
+            document.getElementById('endDate').value = document.getElementById('univEnd').value;
+        }
+
+        // --- [추가] 유니버스 전용 기간 설정 함수 ---
+        function setUniverseLookback(days) {
+            const end = new Date();
+            const start = new Date();
+            start.setDate(end.getDate() - days);
+            const fmt = (d) => d.toISOString().split('T')[0];
+
+            document.getElementById('univStart').value = fmt(start);
+            document.getElementById('univEnd').value = fmt(end);
+            syncUnivDatesToMain();
+            renderUniverseGrid();
+        }
+
+        // --- [수정] MA 선택 버튼 렌더링 ---
+        function renderUnivMaControls() {
+            const container = document.getElementById('univMaSelection');
+            if (!container) return;
+            const periods = [5, 20, 60, 120, 224, 448];
+            container.innerHTML = periods.map(p => {
+                const isActive = univOptions.activeMas.includes(p);
+                return `<button onclick="toggleUnivMa(${p})" class="px-2 py-1 text-[9px] font-black rounded-md transition-all ${isActive ? 'bg-slate-900 text-white shadow-sm' : 'text-slate-400 hover:bg-white/50'}">${p}</button>`;
+            }).join('');
+        }
+
+        function toggleUnivMa(p) {
+            if (univOptions.activeMas.includes(p)) {
+                univOptions.activeMas = univOptions.activeMas.filter(m => m !== p);
+            } else {
+                univOptions.activeMas.push(p);
+            }
+            renderUnivMaControls();
+            renderUniverseGrid();
+        }
+
+        // --- 1. 유니버스 지능형 컨트롤 로직 ---
 
         function setUniverseEngine(engine) {
             univOptions.engine = engine;
-            updateUnivIntelligenceUI();
-            renderUniverseGrid();
+            renderUniverseGrid(); // 엔진 변경 시 즉시 재렌더링
         }
 
         function toggleUnivOption(opt) {
             univOptions[opt] = !univOptions[opt];
-            updateUnivIntelligenceUI();
-            renderUniverseGrid();
+            renderUniverseGrid(); // 옵션(MA, Vol 등) 변경 시 즉시 재렌더링
         }
 
+        // UI 버튼 상태 업데이트 (리포트/유니버스 모두 대응)
+        // UI 버튼 상태 업데이트 보정
         function updateUnivIntelligenceUI() {
-            const btns = {
-                ma: document.getElementById('univOptMaBtn'),
-                vol: document.getElementById('univOptVolBtn'),
-                quarter: document.getElementById('univOptQuarterBtn'),
-                engineIntel: document.getElementById('univEngineIntelBtn'),
-                engineTV: document.getElementById('univEngineTVBtn')
+            const activeClass = "px-2 py-1 text-[9px] font-black uppercase rounded-lg bg-white shadow-sm text-blue-600 border border-blue-100";
+            const inactiveClass = "px-2 py-1 text-[9px] font-black uppercase rounded-lg text-slate-400 hover:bg-white/50 border border-transparent";
+
+            const setBtnClass = (id, condition) => {
+                const btn = document.getElementById(id);
+                if (btn) btn.className = condition ? activeClass : inactiveClass;
             };
 
-            const activeClass = "px-3 py-1.5 text-[9px] font-black uppercase rounded-lg transition-all bg-white shadow-sm text-blue-600";
-            const inactiveClass = "px-3 py-1.5 text-[9px] font-black uppercase rounded-lg transition-all text-slate-400 hover:bg-white/50";
+            setBtnClass('univEngineIntelBtn', univOptions.engine === 'chartjs');
+            setBtnClass('univEngineTVBtn', univOptions.engine === 'tv');
+            setBtnClass('univModeLineBtn', chartMode === 'line');
+            setBtnClass('univModeCandleBtn', chartMode === 'candle');
 
-            if (btns.ma) btns.ma.className = univOptions.ma ? activeClass : inactiveClass;
-            if (btns.vol) btns.vol.className = univOptions.vol ? activeClass : inactiveClass;
-            if (btns.quarter) btns.quarter.className = univOptions.quarter ? activeClass : inactiveClass;
-            
-            if (btns.engineIntel) btns.engineIntel.className = univOptions.engine === 'chartjs' ? activeClass : inactiveClass;
-            if (btns.engineTV) btns.engineTV.className = univOptions.engine === 'tv' ? activeClass : inactiveClass;
+            setBtnClass('univTfDayBtn', chartTimeframe === 'day');
+            setBtnClass('univTfWeekBtn', chartTimeframe === 'week');
+            setBtnClass('univTfMonthBtn', chartTimeframe === 'month');
         }
+
 
         function setReportEngine(engine) {
             const intelBtn = document.getElementById('reportEngineIntelBtn');
@@ -1066,103 +1667,113 @@
             if (activeUniverseId) renderUniverseGrid();
         }
 
+        // 전역 변수: 유니버스 차트 인스턴스 관리
+        let gridChartInstances = {};
+
+        // --- 1. 유니버스 그리드 엔진 (DOM 생성과 드로잉 분리) ---
+        // --- [수정] 유니버스 그리드 메인 렌더러 (기간 반영 및 차트 동기화) ---
+        // --- [수정] 유니버스 그리드 엔진 (TV 위젯 및 즉시 렌더링 최적화) ---
+        // --- [수정] 유니버스 그리드 엔진 (바둑판 배열 & 날짜 선택 반영) ---
         async function renderUniverseGrid() {
             const grid = document.getElementById('universeGrid');
             const univ = universes.find(u => u.id === activeUniverseId);
-            if (!univ) return;
+            if (!univ || !grid) return;
 
-            const engine = univOptions.engine;
-            univ.gridSize = document.getElementById('gridSizeSelect').value;
-            saveDataUniverses();
-
+            // 초기화
+            Object.values(gridChartInstances).forEach(instance => { if (instance) instance.destroy(); });
+            gridChartInstances = {};
             grid.innerHTML = '';
+            renderUnivMaControls();
+
+            // 현재 선택된 날짜 UI 세팅
+            document.getElementById('univStart').value = document.getElementById('startDate').value;
+            document.getElementById('univEnd').value = document.getElementById('endDate').value;
+
             if (univ.tickers.length === 0) {
-                grid.innerHTML = '<div class="col-span-full py-40 text-center text-slate-300 font-black uppercase tracking-[0.5em] italic bg-slate-50 rounded-[3rem] border-2 border-dashed border-slate-200">Start by adding symbols to your universe</div>';
+                grid.innerHTML = '<div class="col-span-full py-20 text-center text-slate-300 font-black italic">No Symbols Added</div>';
                 return;
             }
 
-            const count = univ.tickers.length;
-            let columns = 1;
-            if (univ.gridSize === 'auto') {
-                if (count >= 16) columns = 4;
-                else if (count >= 9) columns = 3;
-                else if (count >= 2) columns = 2;
-                else columns = 1;
+            // 바둑판 배열(Grid Layout) 설정 반영
+            const gridVal = document.getElementById('univGridSelect').value;
+            let columns;
+            if (gridVal === 'auto') {
+                columns = window.innerWidth > 1536 ? 3 : (window.innerWidth > 1280 ? 2 : 1);
             } else {
-                columns = parseInt(univ.gridSize);
+                columns = parseInt(gridVal);
             }
+            grid.style.display = 'grid';
+            grid.style.gridTemplateColumns = `repeat(${columns}, minmax(0, 1fr))`;
 
-            grid.style.gridTemplateColumns = `repeat(${columns}, 1fr)`;
-
-            document.getElementById('loading').style.display = 'flex';
             const start = document.getElementById('startDate').value;
             const end = document.getElementById('endDate').value;
-            
-            try {
-                await Promise.all(univ.tickers.map(async (ticker) => {
-                    const res = await fetch(`${CF_WORKER_BASE}/history?ticker=${ticker}&start=${start}&end=${end}`);
-                    const data = await res.json();
-                    if (data.history) {
-                        globalStockData[ticker] = aggregateHistoryByTimeframe(data.history.map(normalizeHistoryPoint), chartTimeframe);
-                        if (data.name) {
-                            if (!allTickerData[ticker]) allTickerData[ticker] = { company: data.name, events: [], lastUpdate: new Date().toISOString() };
-                            else allTickerData[ticker].company = data.name;
-                        }
-                    }
-                }));
-                saveData();
-            } catch (e) { console.error("Universe data sync failed", e); }
-            finally { document.getElementById('loading').style.display = 'none'; }
 
             univ.tickers.forEach(symbol => {
+                const safeId = symbol.replace(/[^a-zA-Z0-9]/g, '-');
+                const widgetId = `univ-widget-${safeId}`;
+                const canvasId = `canvas-${widgetId}`;
+
                 const container = document.createElement('div');
-                container.className = "relative bg-white rounded-[2.5rem] border-2 border-slate-100 overflow-hidden shadow-sm hover:shadow-xl hover:border-blue-400 transition-all h-[500px] group flex flex-col";
-                
-                const displayName = allTickerData[symbol]?.company || symbol;
-                const widgetId = `univ-widget-${symbol.replace(/[^a-zA-Z0-9]/g, '-')}`;
+                container.className = "bg-white rounded-[1.5rem] border-2 border-slate-100 overflow-hidden shadow-sm hover:shadow-md transition-all flex flex-col";
+                // 그리드 수에 따라 높이 조절 (1개일 때 크게, 여러 개일 때 적당히)
+                const cardHeight = columns === 1 ? "650px" : "480px";
+                container.style.height = cardHeight;
+
                 container.innerHTML = `
-                    <div class="p-6 border-b border-slate-50 flex justify-between items-center bg-slate-50/50">
-                        <div class="flex flex-col min-w-0">
-                            <span class="text-[10px] font-black text-blue-600 uppercase tracking-tighter leading-none mb-1">Asset View</span>
-                            <span class="text-sm font-black uppercase tracking-tight leading-none text-slate-900 truncate">${symbol} | ${displayName}</span>
-                        </div>
-                        <div class="flex gap-2 opacity-0 group-hover:opacity-100 transition-all shrink-0">
-                            <button onclick="selectTickerForComparison('${symbol}', '${displayName.replace(/'/g, "\\'")}'); switchView('report');" class="bg-blue-600 text-white px-4 py-2 rounded-xl font-black text-[9px] uppercase tracking-widest hover:bg-blue-700 transition-all">Analyze</button>
-                            <button onclick="removeTickerFromUniverse('${symbol}')" class="bg-white text-red-500 border border-red-100 px-4 py-2 rounded-xl font-black text-[9px] uppercase tracking-widest hover:bg-red-50 transition-all">Remove</button>
-                        </div>
-                    </div>
-                    <div class="flex-1 relative bg-white">
-                        <div id="${widgetId}" class="w-full h-full flex items-center justify-center">
-                            ${engine === 'chartjs' ? `<canvas id="canvas-${widgetId}" class="w-full h-full"></canvas>` : ''}
-                        </div>
-                    </div>
-                `;
+            <div class="p-4 border-b border-slate-50 flex justify-between items-center bg-slate-50/30">
+                <div class="min-w-0">
+                    <div class="text-[10px] font-black text-slate-900 truncate">${symbol} | ${allTickerData[symbol]?.company || ''}</div>
+                </div>
+                <button onclick="selectTickerForComparison('${symbol}'); switchView('report');" class="bg-slate-900 text-white px-2 py-1 rounded font-black text-[8px] uppercase">Analyze</button>
+            </div>
+            <div class="flex-1 relative" id="${widgetId}">
+                ${univOptions.engine === 'chartjs' ? `<canvas id="${canvasId}"></canvas>` : ``}
+            </div>
+        `;
                 grid.appendChild(container);
 
-                if (engine === 'tv') {
-                    new TradingView.widget({
-                        "autosize": true,
-                        "symbol": symbol,
-                        "interval": "D",
-                        "timezone": "Etc/UTC",
-                        "theme": "light",
-                        "style": chartType === 'candle' ? "1" : "3",
-                        "locale": "en",
-                        "toolbar_bg": "#f1f5f9",
-                        "enable_publishing": false,
-                        "hide_top_toolbar": false,
-                        "hide_legend": false,
-                        "save_image": false,
-                        "container_id": widgetId,
-                        "studies": univOptions.ma ? movingAveragePeriods.map(p => ({ id: "MAExp@tv-basicstudies", inputs: { length: p } })) : []
-                    });
+                if (univOptions.engine === 'chartjs') {
+                    (async () => {
+                        try {
+                            const res = await fetch(`${CF_WORKER_BASE}/history?ticker=${symbol}&start=${start}&end=${end}`);
+                            const data = await res.json();
+                            if (data.history) {
+                                globalStockData[symbol] = aggregateHistoryByTimeframe(data.history.map(normalizeHistoryPoint), chartTimeframe);
+                                drawUniverseFullChart(symbol, canvasId);
+                            }
+                        } catch (e) { console.error(e); }
+                    })();
                 } else {
-                    setTimeout(() => drawUniverseMiniChart(symbol, `canvas-${widgetId}`), 10);
+                    // --- [수정] 트레이딩뷰 위젯: 캔들 + 20/60/120 이평선 세팅 ---
+                    setTimeout(() => {
+                        new TradingView.widget({
+                            "autosize": true,
+                            "symbol": symbol,
+                            "interval": chartTimeframe === 'day' ? "D" : (chartTimeframe === 'week' ? "W" : "M"),
+                            "timezone": "Etc/UTC",
+                            "theme": "light",
+                            "style": "1", // 1: 캔들
+                            "locale": "en",
+                            "toolbar_bg": "#f1f5f9",
+                            "enable_publishing": false,
+                            "hide_top_toolbar": true,
+                            "save_image": false,
+                            "container_id": widgetId,
+                            // 이평선 3개(20, 60, 120) 주입
+                            "studies": [
+                                { id: "MASimple@tv-basicstudies", inputs: { length: 20 } },
+                                { id: "MASimple@tv-basicstudies", inputs: { length: 60 } },
+                                { id: "MASimple@tv-basicstudies", inputs: { length: 120 } }
+                            ]
+                        });
+                    }, 50);
                 }
             });
+            updateUnivIntelligenceUI();
         }
 
-        function drawUniverseMiniChart(symbol, canvasId) {
+        // --- [수정] 유니버스 상세 차트 드로잉 (볼륨, MA, 툴팁 완벽 반영) ---
+        function drawUniverseFullChart(symbol, canvasId) {
             const canvas = document.getElementById(canvasId);
             if (!canvas) return;
             const ctx = canvas.getContext('2d');
@@ -1170,102 +1781,131 @@
             if (!data.length) return;
 
             const labels = data.map(d => d.date);
-            const prices = data.map(d => d.close || d.price);
-            const displayName = allTickerData[symbol]?.company || symbol;
-            
-            const datasets = [{
+            const isCandle = chartMode === 'candle';
+            const datasets = [];
+
+            // 1. 가격 데이터셋
+            datasets.push({
                 label: symbol,
-                isPriceSeries: true,
-                data: prices,
-                borderColor: COLORS[0],
-                borderWidth: 3,
+                data: data.map(d => d.close),
+                borderColor: isCandle ? 'transparent' : COLORS[0],
+                borderWidth: 2.5,
                 pointRadius: 0,
                 tension: 0.1,
-                fill: false
-            }];
+                fill: false,
+                isPriceSeries: true,
+                yAxisID: 'y'
+            });
 
+            // 2. 볼륨 데이터셋 (반영 확인)
+            if (univOptions.vol) {
+                datasets.push({
+                    label: 'Volume',
+                    type: 'bar',
+                    data: data.map(d => d.volume),
+                    backgroundColor: 'rgba(203, 213, 225, 0.4)',
+                    yAxisID: 'yVolume',
+                    barPercentage: 0.7,
+                    order: 10
+                });
+            }
+
+            // 3. 이동평균선 (선택된 기간만 반영)
             if (univOptions.ma) {
-                // global config에 활성화된 모든 MA를 표시
-                movingAveragePeriods.filter(p => movingAverageConfig[p]).forEach(period => {
+                univOptions.activeMas.forEach(p => {
                     datasets.push({
-                        label: `${symbol}-ma-${period}`,
-                        data: calculateMovingAverage(data, period, labels),
-                        borderColor: getMovingAverageColor(period),
-                        borderWidth: 1.5,
+                        label: `${p}MA`,
+                        data: calculateMovingAverage(data, p, labels),
+                        borderColor: getMovingAverageColor(p) + 'cc',
+                        borderWidth: 1.2,
                         pointRadius: 0,
-                        tension: 0.15,
-                        fill: false
+                        fill: false,
+                        tension: 0.2
                     });
                 });
             }
 
-            if (univOptions.vol) {
-                datasets.push({
-                    type: 'bar',
-                    yAxisID: 'yVolume',
-                    data: data.map(d => d.volume || 0),
-                    backgroundColor: 'rgba(148, 163, 184, 0.15)',
-                    barPercentage: 0.8
-                });
-            }
-
-            if (document.getElementById('universeOverlayComparison').checked) {
-                compareTickers.forEach((t, idx) => {
-                    if (t === symbol) return;
-                    const compData = globalStockData[t] || [];
-                    if (compData.length) {
-                        datasets.push({
-                            label: t,
-                            data: compData.map(d => d.close || d.price),
-                            borderColor: COLORS[(idx + 1) % COLORS.length] + '44',
-                            borderWidth: 1.5,
-                            pointRadius: 0,
-                            tension: 0.1,
-                            fill: false
+            const plugins = [];
+            // 캔들 엔진
+            if (isCandle) {
+                plugins.push({
+                    id: 'candleDrawer',
+                    afterDatasetsDraw: (c) => {
+                        const { ctx, scales: { x, y } } = c;
+                        const width = (x.width / data.length) * 0.7;
+                        data.forEach((d, i) => {
+                            const px = x.getPixelForValue(labels[i]);
+                            const isUp = d.close >= d.open;
+                            ctx.strokeStyle = isUp ? '#ef4444' : '#3b82f6';
+                            ctx.fillStyle = isUp ? '#ef4444' : '#3b82f6';
+                            ctx.lineWidth = 1;
+                            ctx.beginPath();
+                            ctx.moveTo(px, y.getPixelForValue(d.high)); ctx.lineTo(px, y.getPixelForValue(d.low));
+                            ctx.stroke();
+                            ctx.fillRect(px - width / 2, y.getPixelForValue(Math.max(d.open, d.close)), width, Math.max(1, Math.abs(y.getPixelForValue(d.open) - y.getPixelForValue(d.close))));
                         });
                     }
                 });
             }
 
-            const plugins = [];
-            if (univOptions.quarter && quarterState && quarterState.ticker === symbol) {
-                plugins.push(buildQuarterSymmetryPlugin());
-            }
+            if (gridChartInstances[canvasId]) gridChartInstances[canvasId].destroy();
 
-            new Chart(ctx, {
+            gridChartInstances[canvasId] = new Chart(ctx, {
                 type: 'line',
                 data: { labels, datasets },
                 options: {
                     responsive: true,
                     maintainAspectRatio: false,
-                    plugins: { 
-                        legend: { display: false }, 
-                        tooltip: { 
+                    interaction: { mode: 'index', intersect: false },
+                    plugins: {
+                        legend: { display: false },
+                        // 툴팁 활성화 및 스타일링
+                        tooltip: {
                             enabled: true,
                             backgroundColor: 'rgba(15, 23, 42, 0.9)',
-                            padding: 12,
-                            cornerRadius: 12,
+                            titleFont: { size: 10, weight: 'bold' },
+                            bodyFont: { size: 10 },
+                            padding: 10,
+                            cornerRadius: 8,
                             callbacks: {
                                 label: (context) => {
-                                    const ds = context.dataset;
                                     const val = context.parsed.y;
-                                    if (ds.type === 'bar') return ` VOL: ${Number(val).toLocaleString()}`;
-                                    const label = ds.label || symbol;
-                                    return ` ${label.replace(/\..*/, '')}: ${formatPriceByTicker(symbol, val)}`;
+                                    if (context.dataset.yAxisID === 'yVolume') return ` VOL: ${val.toLocaleString()}`;
+                                    return ` PRICE: ${formatPriceByTicker(symbol, val)}`;
                                 }
                             }
-                        } 
+                        }
                     },
                     scales: {
-                        x: { display: false },
-                        y: { 
-                            ticks: { font: { weight: 'bold', size: 9 }, callback: (val) => formatPriceByTicker(symbol, val) },
+                        x: { ticks: { font: { size: 8 }, maxTicksLimit: 5 }, grid: { display: false } },
+                        y: {
+                            position: 'right',
+                            ticks: { font: { size: 9, weight: 'bold' }, callback: v => formatPriceByTicker(symbol, v) },
                             grid: { color: '#f1f5f9' }
                         },
-                        yVolume: { display: false, position: 'right', beginAtZero: true }
+                        yVolume: { display: false, beginAtZero: true, grace: '300%' } // 볼륨이 겹치지 않게 하단 배치
                     }
                 },
                 plugins: plugins
+            });
+        }
+
+        // 트레이딩뷰 위젯 렌더링 함수 분리 (안정성)
+        function renderTVWidget(symbol, containerId) {
+            const container = document.getElementById(containerId);
+            if (!container) return;
+            container.innerHTML = ''; // 캔버스 제거 후 TV 위젯 주입
+
+            new TradingView.widget({
+                "autosize": true,
+                "symbol": symbol,
+                "interval": "D",
+                "theme": "light",
+                "style": chartMode === 'candle' ? "1" : "3",
+                "locale": "en",
+                "container_id": containerId,
+                "hide_top_toolbar": true,
+                "studies": univOptions.ma ? ["MAExp@tv-basicstudies"] : []
             });
         }
 
@@ -1445,7 +2085,7 @@
                     <div class="flex justify-between items-center text-[10px]">
                         <div class="flex items-center gap-1.5 font-black">
                             <div class="w-1.5 h-1.5 rounded-full" style="background:${color}"></div>
-                            <span style="color:${color}">${t.replace(/\..*/,'')}</span>
+                            <span style="color:${color}">${t.replace(/\..*/, '')}</span>
                         </div>
                         <div class="text-right">
                             <div class="font-black text-white">${effectiveChartMode === 'candle' ? `O ${sym}${d.open.toLocaleString()} | H ${sym}${d.high.toLocaleString()} | L ${sym}${d.low.toLocaleString()} | C ${sym}${d.close.toLocaleString()}` : `${sym}${d.price.toLocaleString()}`}</div>
@@ -1501,7 +2141,7 @@
                             <div class="flex items-center justify-between gap-3 mb-2">
                                 <div class="flex items-center gap-1.5 font-black">
                                     <div class="w-1.5 h-1.5 rounded-full" style="background:${color}"></div>
-                                    <span style="color:${color}">${ticker.replace(/\..*/,'')}</span>
+                                    <span style="color:${color}">${ticker.replace(/\..*/, '')}</span>
                                 </div>
                                 <div class="text-right">
                                     <div class="font-black ${amount >= 0 ? 'text-green-400' : 'text-red-400'}">${amount >= 0 ? '▲' : '▼'} ${formatCurrencyByTicker(ticker, amount)}</div>
@@ -2012,8 +2652,8 @@
                 { name: '100% (Peak)', value: state.priceRange.peak, desc: '기존 파동 정점' }
             ];
             const nearest = nearestLevels.reduce((prev, curr) => Math.abs(curr.value - state.lastPrice) < Math.abs(prev.value - state.lastPrice) ? curr : prev);
-            const startElapsed = Math.round((new Date().setHours(0,0,0,0) - new Date(state.anchors.start).setHours(0,0,0,0)) / (1000 * 60 * 60 * 24));
-            const endElapsed = Math.round((new Date().setHours(0,0,0,0) - new Date(state.anchors.end).setHours(0,0,0,0)) / (1000 * 60 * 60 * 24));
+            const startElapsed = Math.round((new Date().setHours(0, 0, 0, 0) - new Date(state.anchors.start).setHours(0, 0, 0, 0)) / (1000 * 60 * 60 * 24));
+            const endElapsed = Math.round((new Date().setHours(0, 0, 0, 0) - new Date(state.anchors.end).setHours(0, 0, 0, 0)) / (1000 * 60 * 60 * 24));
             document.getElementById('quarterPeriod').innerText = `${state.anchors.start} → ${state.anchors.end}`;
             document.getElementById('quarterWaveSummary').innerHTML = `
                 <div class="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2">Wave Insight</div>
@@ -2238,10 +2878,10 @@
         }
 
         function resetWorkspace() {
-            if(!confirm("Reset current hub? DB will remain.")) return;
+            if (!confirm("Reset current hub? DB will remain.")) return;
             compareTickers = []; alertTickers = {}; globalStockData = {}; showVolume = false; guideLineDrawMode = false; guideLineDraft = null; editingEventId = null; quarterState = null;
             movingAveragePeriods.forEach(period => movingAverageConfig[period] = false);
-            if(chart) chart.destroy(); chart = null;
+            if (chart) chart.destroy(); chart = null;
             document.getElementById('outSub').innerHTML = '';
             document.getElementById('outPeriod').innerText = '----.--.--';
             document.getElementById('eventGrid').innerHTML = '';
@@ -2274,7 +2914,7 @@
                 const data = await res.json();
                 const symbol = ticker.includes('.KS') || ticker.includes('.KQ') || ticker.includes('KRW') ? '₩' : '$';
                 document.getElementById('priceStatus').innerHTML = `<span>LIVE: ${symbol}${data.price.toLocaleString()}</span> <span class="text-slate-400 font-bold uppercase">${new Date(data.time).toLocaleTimeString()}</span>`;
-            } catch (e) {}
+            } catch (e) { }
         }
 
         function addToComparison(manualTicker = null, manualName = null) {
@@ -2315,8 +2955,8 @@
             delete alertTickers[ticker];
             if (compareTickers.length !== 1) quarterState = null;
             updateHubUI();
-            if(compareTickers.length > 0) buildTimeline();
-            else { if(chart) chart.destroy(); chart = null; document.getElementById('eventGrid').innerHTML = ''; renderQuarterSection(); updateQuarterHubUI(); }
+            if (compareTickers.length > 0) buildTimeline();
+            else { if (chart) chart.destroy(); chart = null; document.getElementById('eventGrid').innerHTML = ''; renderQuarterSection(); updateQuarterHubUI(); }
         }
 
         function addAlertConfig(ticker = null, threshold = null) {
@@ -2371,7 +3011,7 @@
             compareTickers.forEach((ticker, idx) => {
                 const color = COLORS[idx % COLORS.length];
                 const configs = getAlertConfigs(ticker);
-                tagContainer.innerHTML += `<span class="px-3 py-1.5 rounded-full text-[10px] font-black text-white shadow-sm flex items-center gap-2" style="background:${color}">${ticker.replace(/\.KS|\.KQ/,'')}<button onclick="removeFromComparison('${ticker}')">×</button></span>`;
+                tagContainer.innerHTML += `<span class="px-3 py-1.5 rounded-full text-[10px] font-black text-white shadow-sm flex items-center gap-2" style="background:${color}">${ticker.replace(/\.KS|\.KQ/, '')}<button onclick="removeFromComparison('${ticker}')">×</button></span>`;
                 eventTarget.innerHTML += `<option value="${ticker}">${ticker}</option>`;
                 alertTickerInput.innerHTML += `<option value="${ticker}">${ticker}</option>`;
 
@@ -2474,13 +3114,13 @@
                         });
                     }
                 }));
-                document.getElementById('outPeriod').innerText = `${start.replace(/-/g,'.')} - ${end.replace(/-/g,'.')} (${getTimeframeLabel(chartTimeframe)})`;
+                document.getElementById('outPeriod').innerText = `${start.replace(/-/g, '.')} - ${end.replace(/-/g, '.')} (${getTimeframeLabel(chartTimeframe)})`;
                 const outSub = document.getElementById('outSub'); outSub.innerHTML = '';
                 compareTickers.forEach((t, i) => {
                     outSub.innerHTML += `<div class="flex items-center gap-2 font-black text-[11px]" style="color:${COLORS[i % COLORS.length]}"><span>${t}</span><span class="text-slate-300">|</span><span class="text-slate-400 font-bold uppercase">${allTickerData[t]?.company || t}</span></div>`;
                 });
                 renderChart(); refreshEventUI(); renderUnifiedSearch(); renderHistoryList(); renderGlobalEvents();
-                
+
                 // Hybrid View Sync
                 if (document.getElementById('showLiveTVInReport').checked) {
                     renderReportLiveTVGrid();
@@ -2647,12 +3287,12 @@
                             evsOnDate.forEach((ev, ei) => {
                                 const tickerEventNumber = getTickerEventNumber(ev); const yo = 25 + (ei * 25);
                                 ctx.save();
-                                if(activeHighlight && activeHighlight.ticker === ticker && activeHighlight.date === date) {
-                                    ctx.beginPath(); ctx.strokeStyle='#2563eb'; ctx.lineWidth=3; ctx.arc(pt.x, pt.y, 15, 0, Math.PI*2); ctx.stroke();
+                                if (activeHighlight && activeHighlight.ticker === ticker && activeHighlight.date === date) {
+                                    ctx.beginPath(); ctx.strokeStyle = '#2563eb'; ctx.lineWidth = 3; ctx.arc(pt.x, pt.y, 15, 0, Math.PI * 2); ctx.stroke();
                                 }
                                 ctx.fillStyle = TYPE_COLORS[ev.type]; ctx.beginPath(); ctx.arc(pt.x, pt.y - yo, 10, 0, Math.PI * 2); ctx.fill();
-                                ctx.fillStyle='white'; ctx.font='bold 10px Pretendard'; ctx.textAlign='center'; ctx.textBaseline='middle'; ctx.fillText(tickerEventNumber, pt.x, pt.y - yo);
-                                ctx.beginPath(); ctx.moveTo(pt.x, pt.y-(yo-10)); ctx.lineTo(pt.x, pt.y-5); ctx.strokeStyle=TYPE_COLORS[ev.type]; ctx.stroke();
+                                ctx.fillStyle = 'white'; ctx.font = 'bold 10px Pretendard'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; ctx.fillText(tickerEventNumber, pt.x, pt.y - yo);
+                                ctx.beginPath(); ctx.moveTo(pt.x, pt.y - (yo - 10)); ctx.lineTo(pt.x, pt.y - 5); ctx.strokeStyle = TYPE_COLORS[ev.type]; ctx.stroke();
                                 flagHitAreas.push({ x: pt.x, y: pt.y - yo, radius: 12, ticker, date });
                                 ctx.restore();
                             });
@@ -2773,7 +3413,7 @@
                         const points = chart.getElementsAtEventForMode(e.native, 'index', { intersect: false }, true);
                         const nearestPoint = chart.getElementsAtEventForMode(e.native, 'nearest', { intersect: false }, true);
                         const nearestPricePoint = nearestPoint.find(point => chart.data.datasets[point.datasetIndex]?.isPriceSeries);
-                        const isOverFlag = flagHitAreas.some(f => Math.sqrt((xPos - f.x)**2 + (yPos - f.y)**2) < f.radius);
+                        const isOverFlag = flagHitAreas.some(f => Math.sqrt((xPos - f.x) ** 2 + (yPos - f.y) ** 2) < f.radius);
                         e.native.target.style.cursor = isOverFlag ? 'pointer' : (guideLineDrawMode ? 'crosshair' : 'default');
 
                         if (points.length > 0) {
@@ -2806,7 +3446,7 @@
                     },
                     onClick: (e) => {
                         const rect = e.chart.canvas.getBoundingClientRect();
-                        const hit = flagHitAreas.find(f => Math.sqrt((e.native.clientX - rect.left - f.x)**2 + (e.native.clientY - rect.top - f.y)**2) < f.radius);
+                        const hit = flagHitAreas.find(f => Math.sqrt((e.native.clientX - rect.left - f.x) ** 2 + (e.native.clientY - rect.top - f.y) ** 2) < f.radius);
                         if (hit) {
                             focusEvent(hit.ticker, hit.date);
                             return;
@@ -2859,14 +3499,14 @@
             if (!pts) return alert("Sync First");
             const idx = pts.findIndex(p => p.date === d);
             if (idx === -1) return alert("Day Locked (Closed)");
-            
+
             const cur = pts[idx];
-            allTickerData[t].events.push({ 
+            allTickerData[t].events.push({
                 id: `event-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
-                date: d, title, desc, type, 
-                diff: cur.diff_today, 
-                pct: cur.change_today, 
-                priceAt: cur.price 
+                date: d, title, desc, type,
+                diff: cur.diff_today,
+                pct: cur.change_today,
+                priceAt: cur.price
             });
             allTickerData[t].lastUpdate = new Date().toISOString();
             saveData(); persistGraphTimelineMeta("graph-event-create"); refreshEventUI(); renderChart(); renderUnifiedSearch(); renderGlobalEvents(); renderHistoryList();
@@ -2934,15 +3574,15 @@
             saveData(); persistGraphTimelineMeta("graph-event-create"); refreshEventUI(); renderChart(); renderUnifiedSearch(); renderGlobalEvents(); renderHistoryList();
         }
 
-        function removeEvent(ticker, eventId) { if(confirm("Del?")) { captureRecoveryPoint("graph-event-delete"); allTickerData[ticker].events = allTickerData[ticker].events.filter(event => event.id !== eventId); if (editingEventId === eventId) editingEventId = null; saveData(); persistGraphTimelineMeta("graph-event-delete"); refreshEventUI(); renderChart(); renderUnifiedSearch(); renderGlobalEvents(); renderHistoryList(); } }
-        function toggleSection(id) { const sec = document.getElementById(id); const isHidden = sec.classList.toggle('hidden'); document.getElementById(id+'-icon').innerText = isHidden ? '▼' : '▲'; }
-        function getSortedMergedEvents() { let m = []; compareTickers.forEach(t => { if(allTickerData[t]) allTickerData[t].events.forEach(e => m.push({ ...e, ticker: t, _eventRef: e })); }); return m.sort((a,b) => new Date(a.date) - new Date(b.date)); }
+        function removeEvent(ticker, eventId) { if (confirm("Del?")) { captureRecoveryPoint("graph-event-delete"); allTickerData[ticker].events = allTickerData[ticker].events.filter(event => event.id !== eventId); if (editingEventId === eventId) editingEventId = null; saveData(); persistGraphTimelineMeta("graph-event-delete"); refreshEventUI(); renderChart(); renderUnifiedSearch(); renderGlobalEvents(); renderHistoryList(); } }
+        function toggleSection(id) { const sec = document.getElementById(id); const isHidden = sec.classList.toggle('hidden'); document.getElementById(id + '-icon').innerText = isHidden ? '▼' : '▲'; }
+        function getSortedMergedEvents() { let m = []; compareTickers.forEach(t => { if (allTickerData[t]) allTickerData[t].events.forEach(e => m.push({ ...e, ticker: t, _eventRef: e })); }); return m.sort((a, b) => new Date(a.date) - new Date(b.date)); }
         function getTickerEventNumber(event) {
             const ref = event._eventRef || event;
             const index = getSortedMergedEvents().filter(e => e.ticker === event.ticker).findIndex(e => (e._eventRef || e) === ref); return index >= 0 ? index + 1 : 1;
         }
         function saveData() { localStorage.setItem('rd_v39_db', JSON.stringify(allTickerData)); persistGraphTimelineMeta(null); }
-        
+
         function renderHistoryList() {
             const list = document.getElementById('historyList'); list.innerHTML = '';
             const query = getFeedSearchValue();
@@ -2952,7 +3592,7 @@
                 const info = allTickerData[t];
                 return !query || [t, info.company || '', ...(info.events || []).flatMap(ev => [ev.title || '', ev.desc || ''])].join(' ').toLowerCase().includes(query);
             });
-            if(keys.length === 0 && benchmarkNotes.length === 0) { list.innerHTML = '<p class="text-[10px] text-slate-400 font-bold italic uppercase">DB Empty.</p>'; return; }
+            if (keys.length === 0 && benchmarkNotes.length === 0) { list.innerHTML = '<p class="text-[10px] text-slate-400 font-bold italic uppercase">DB Empty.</p>'; return; }
             benchmarkNotes.forEach(bm => {
                 const item = document.createElement('div'); item.className = "p-3 bg-amber-50 border border-amber-200 rounded-xl shadow-sm mb-2 cursor-pointer hover:border-amber-400 transition-all";
                 item.onclick = () => addBenchmark(bm.t, bm.n);
@@ -2963,7 +3603,7 @@
                 const info = allTickerData[t];
                 const benchmarkMemo = benchmarkList.find(bm => bm.t === t && bm.m)?.m;
                 const item = document.createElement('div'); item.className = "p-3 bg-white border border-slate-100 rounded-xl shadow-sm mb-2 cursor-pointer hover:border-blue-500 transition-all";
-                item.onclick = () => { if(!compareTickers.includes(t)) addToComparison(t, info.company); };
+                item.onclick = () => { if (!compareTickers.includes(t)) addToComparison(t, info.company); };
                 item.innerHTML = `<div class="flex justify-between font-black text-slate-800"><span>${info.company}</span><span class="text-[8px] bg-slate-900 text-white px-1 rounded">${t}</span></div><div class="text-[8px] text-slate-400 font-bold uppercase">${info.events.length} Events | ${new Date(info.lastUpdate).toLocaleDateString()}</div>${benchmarkMemo ? `<div class="mt-2 text-[10px] text-amber-700 font-medium leading-relaxed border-t border-amber-100 pt-2">${benchmarkMemo}</div>` : ''}`;
                 list.appendChild(item);
             });
@@ -2985,7 +3625,7 @@
                 if (hay.includes(query)) results.push({ type: 'asset', title: info.company || ticker, sub: ticker, desc: `${info.events.length} events saved`, action: () => addToComparison(ticker, info.company) });
                 (info.events || []).forEach(ev => {
                     const evHay = [ticker, info.company || '', ev.title || '', ev.desc || ''].join(' ').toLowerCase();
-                    if (evHay.includes(query)) results.push({ type: 'event', title: ev.title, sub: `${ticker} | ${ev.date}`, desc: ev.desc || TYPE_LABELS[ev.type], action: () => { if(!compareTickers.includes(ticker)) addToComparison(ticker, info.company); setTimeout(() => focusEvent(ticker, ev.date), 800); } });
+                    if (evHay.includes(query)) results.push({ type: 'event', title: ev.title, sub: `${ticker} | ${ev.date}`, desc: ev.desc || TYPE_LABELS[ev.type], action: () => { if (!compareTickers.includes(ticker)) addToComparison(ticker, info.company); setTimeout(() => focusEvent(ticker, ev.date), 800); } });
                 });
             });
             results.slice(0, 8).forEach(result => {
@@ -3000,12 +3640,12 @@
         function renderGlobalEvents() {
             const list = document.getElementById('globalEventList'); list.innerHTML = '';
             const query = getFeedSearchValue();
-            let items = []; Object.keys(allTickerData).forEach(t => allTickerData[t].events.forEach(e => items.push({...e, ticker: t})));
+            let items = []; Object.keys(allTickerData).forEach(t => allTickerData[t].events.forEach(e => items.push({ ...e, ticker: t })));
             items = items.filter(ev => !query || [ev.ticker, allTickerData[ev.ticker]?.company || '', ev.title || '', ev.desc || ''].join(' ').toLowerCase().includes(query));
-            items.sort((a,b) => new Date(b.date) - new Date(a.date)).forEach(ev => {
+            items.sort((a, b) => new Date(b.date) - new Date(a.date)).forEach(ev => {
                 const node = document.createElement('div'); node.className = "p-3 bg-slate-800 rounded-xl border-l-4 mb-2 cursor-pointer";
                 node.style.borderLeftColor = TYPE_COLORS[ev.type];
-                node.onclick = () => { if(!compareTickers.includes(ev.ticker)) addToComparison(ev.ticker); setTimeout(()=>focusEvent(ev.ticker, ev.date), 1000); };
+                node.onclick = () => { if (!compareTickers.includes(ev.ticker)) addToComparison(ev.ticker); setTimeout(() => focusEvent(ev.ticker, ev.date), 1000); };
                 node.innerHTML = `<div class="flex justify-between text-[8px] text-slate-400 font-black"><span>${ev.date}</span><span>${ev.ticker}</span></div><div class="text-xs font-black text-white truncate uppercase italic tracking-tighter">${ev.title}</div><div class="text-[10px] text-slate-500 font-medium mt-1 truncate">${ev.desc || allTickerData[ev.ticker]?.company || ''}</div>`;
                 list.appendChild(node);
             });
@@ -3014,7 +3654,7 @@
         function refreshEventUI() {
             const grid = document.getElementById('eventGrid'); grid.innerHTML = '';
             getSortedMergedEvents().forEach((ev) => {
-                const color = TYPE_COLORS[ev.type]; 
+                const color = TYPE_COLORS[ev.type];
                 const sym = ev.ticker.includes('.KS') || ev.ticker.includes('KRW') ? '₩' : '$';
                 const isEditing = editingEventId === ev.id;
                 const card = document.createElement('div');
@@ -3026,7 +3666,7 @@
                     card.onclick = () => { document.getElementById('chartContainer').scrollIntoView({ behavior: 'smooth', block: 'center' }); activeHighlight = { ticker: ev.ticker, date: ev.date }; chart.draw(); setTimeout(() => { activeHighlight = null; chart.draw(); }, 3000); };
                 }
                 card.className = `min-w-0 overflow-hidden p-6 rounded-[2rem] border-2 bg-white relative shadow-sm transition-all ${isEditing ? '' : 'cursor-pointer hover:shadow-lg'} group`;
-                if(ev.type !== 'def') { card.style.borderLeftColor = color; card.style.borderLeftWidth = '8px'; }
+                if (ev.type !== 'def') { card.style.borderLeftColor = color; card.style.borderLeftWidth = '8px'; }
                 if (isEditing) {
                     card.innerHTML = `
                         <div id="event-edit-form-${ev.id}" class="space-y-4">
@@ -3103,8 +3743,8 @@
             });
         }
 
-        function deleteSet(id) { if(confirm("Del?")) { captureRecoveryPoint("graph-set-delete"); savedCombinedSets = savedCombinedSets.filter(s => s.id !== id); localStorage.setItem('rd_v39_combined', JSON.stringify(savedCombinedSets)); persistGraphTimelineMeta("graph-set-delete"); renderCombinedList(); } }
-        function exportBackup() { const blob = new Blob([JSON.stringify({db: allTickerData, sets: savedCombinedSets})], {type:'application/json'}); const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download=`OS_INTEL_V39.json`; a.click(); }
+        function deleteSet(id) { if (confirm("Del?")) { captureRecoveryPoint("graph-set-delete"); savedCombinedSets = savedCombinedSets.filter(s => s.id !== id); localStorage.setItem('rd_v39_combined', JSON.stringify(savedCombinedSets)); persistGraphTimelineMeta("graph-set-delete"); renderCombinedList(); } }
+        function exportBackup() { const blob = new Blob([JSON.stringify({ db: allTickerData, sets: savedCombinedSets })], { type: 'application/json' }); const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = `OS_INTEL_V39.json`; a.click(); }
         function importBackup(event) { const file = event.target.files[0]; if (!file) return; captureRecoveryPoint("graph-import"); const reader = new FileReader(); reader.onload = (e) => { try { const data = JSON.parse(e.target.result); allTickerData = data.db || {}; savedCombinedSets = data.sets || []; localStorage.setItem('rd_v39_db', JSON.stringify(allTickerData)); localStorage.setItem('rd_v39_combined', JSON.stringify(savedCombinedSets)); persistGraphTimelineMeta("graph-import"); location.reload(); } catch (err) { } }; reader.readAsText(file); }
         function saveAsImage() { document.getElementById('loading').style.display = 'flex'; htmlToImage.toPng(document.getElementById('captureArea'), { pixelRatio: 3, backgroundColor: '#ffffff' }).then(url => { const a = document.createElement('a'); a.download = `FINANCIAL_LOG_V39.png`; a.href = url; a.click(); document.getElementById('loading').style.display = 'none'; }); }
         function renderBenchmarks() {
@@ -3117,11 +3757,12 @@
             });
         }
         function addBenchmark(t, n) { addToComparison(t, n); buildTimeline(); }
-        function addNewBenchmark() { const t = prompt("Ticker:"); const n = prompt("Name:"); const m = prompt("Memo (optional):", "") || ''; if(t && n) { benchmarkList.push({t: t.toUpperCase(), n: n.toUpperCase(), m}); localStorage.setItem('rd_v39_bench', JSON.stringify(benchmarkList)); persistGraphTimelineMeta("graph-benchmark-create"); renderBenchmarks(); renderHistoryList(); renderUnifiedSearch(); } }
-        function removeBenchmark(i) { if(confirm("삭제?")) { captureRecoveryPoint("graph-benchmark-delete"); benchmarkList.splice(i, 1); localStorage.setItem('rd_v39_bench', JSON.stringify(benchmarkList)); persistGraphTimelineMeta("graph-benchmark-delete"); renderBenchmarks(); renderHistoryList(); renderUnifiedSearch(); } }
+        function addNewBenchmark() { const t = prompt("Ticker:"); const n = prompt("Name:"); const m = prompt("Memo (optional):", "") || ''; if (t && n) { benchmarkList.push({ t: t.toUpperCase(), n: n.toUpperCase(), m }); localStorage.setItem('rd_v39_bench', JSON.stringify(benchmarkList)); persistGraphTimelineMeta("graph-benchmark-create"); renderBenchmarks(); renderHistoryList(); renderUnifiedSearch(); } }
+        function removeBenchmark(i) { if (confirm("삭제?")) { captureRecoveryPoint("graph-benchmark-delete"); benchmarkList.splice(i, 1); localStorage.setItem('rd_v39_bench', JSON.stringify(benchmarkList)); persistGraphTimelineMeta("graph-benchmark-delete"); renderBenchmarks(); renderHistoryList(); renderUnifiedSearch(); } }
 
 
         window.onload = init;
     </script>
 </body>
+
 </html>
